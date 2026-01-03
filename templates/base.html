@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Defender XDR Endpoint Policy Manager{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt"></i>
+                <h1>Defender XDR</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item active">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" onclick="loadPolicies(); return false;">
+                    <i class="fas fa-file-shield"></i>
+                    <span>Endpoint Policies</span>
+                </a>
+                <a href="#" class="nav-item" onclick="loadDevices(); return false;">
+                    <i class="fas fa-laptop"></i>
+                    <span>Managed Devices</span>
+                </a>
+                <a href="#" class="nav-item" onclick="loadMachines(); return false;">
+                    <i class="fas fa-server"></i>
+                    <span>Defender Machines</span>
+                </a>
+                <a href="#" class="nav-item" onclick="loadAlerts(); return false;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Security Alerts</span>
+                </a>
+                <a href="#" class="nav-item" onclick="showQueryBuilder(); return false;">
+                    <i class="fas fa-search"></i>
+                    <span>Advanced Hunting</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search policies..." onkeyup="handleSearch(event)">
+                </div>
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Admin</span>
+                </div>
+            </header>
+
+            <div class="content-area">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Policy Details -->
+    <div id="policyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
