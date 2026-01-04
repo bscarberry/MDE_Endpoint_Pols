@@ -27,6 +27,38 @@ function closeModal() {
     document.getElementById('policyModal').style.display = 'none';
 }
 
+// View Management
+function showDashboard() {
+    // Show dashboard sections
+    const statsGrid = document.getElementById('statsGrid');
+    const recentPoliciesSection = statsGrid.parentElement.nextElementSibling;
+
+    if (statsGrid) statsGrid.style.display = 'grid';
+    if (recentPoliciesSection) recentPoliciesSection.style.display = 'block';
+
+    // Hide other sections
+    hideQueryBuilder();
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Update nav
+    updateActiveNav(0);
+}
+
+function showResultsSection() {
+    // Hide dashboard sections
+    const statsGrid = document.getElementById('statsGrid');
+    const recentPoliciesSection = statsGrid.parentElement.nextElementSibling;
+
+    if (statsGrid) statsGrid.style.display = 'none';
+    if (recentPoliciesSection) recentPoliciesSection.style.display = 'none';
+
+    // Hide query section
+    hideQueryBuilder();
+
+    // Show results section
+    document.getElementById('resultsSection').style.display = 'block';
+}
+
 // Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('policyModal');
@@ -173,14 +205,13 @@ async function loadPolicies() {
 }
 
 function displayAllPolicies(policies) {
-    hideQueryBuilder();
+    showResultsSection();
 
-    const resultsSection = document.getElementById('resultsSection');
     const resultsTitle = document.getElementById('resultsTitle');
     const resultsContent = document.getElementById('resultsContent');
 
     resultsTitle.textContent = 'All Endpoint Policies';
-    resultsSection.style.display = 'block';
+    updateActiveNav(1);
 
     let html = '<div class="policy-list">';
 
@@ -368,14 +399,13 @@ async function loadDevices() {
 }
 
 function displayDevices(devices) {
-    hideQueryBuilder();
+    showResultsSection();
 
-    const resultsSection = document.getElementById('resultsSection');
     const resultsTitle = document.getElementById('resultsTitle');
     const resultsContent = document.getElementById('resultsContent');
 
     resultsTitle.textContent = `Managed Devices (${devices.length})`;
-    resultsSection.style.display = 'block';
+    updateActiveNav(2);
 
     let html = '<table class="data-table"><tr><th>Device Name</th><th>OS</th><th>Compliance</th><th>Last Sync</th></tr>';
 
@@ -405,14 +435,13 @@ async function loadMachines() {
 }
 
 function displayMachines(machines) {
-    hideQueryBuilder();
+    showResultsSection();
 
-    const resultsSection = document.getElementById('resultsSection');
     const resultsTitle = document.getElementById('resultsTitle');
     const resultsContent = document.getElementById('resultsContent');
 
     resultsTitle.textContent = `Defender Machines (${machines.length})`;
-    resultsSection.style.display = 'block';
+    updateActiveNav(3);
 
     let html = '<table class="data-table"><tr><th>Computer Name</th><th>OS Platform</th><th>Health Status</th><th>Risk Score</th></tr>';
 
@@ -441,14 +470,13 @@ async function loadAlerts() {
 }
 
 function displayAlerts(alerts) {
-    hideQueryBuilder();
+    showResultsSection();
 
-    const resultsSection = document.getElementById('resultsSection');
     const resultsTitle = document.getElementById('resultsTitle');
     const resultsContent = document.getElementById('resultsContent');
 
     resultsTitle.textContent = `Security Alerts (${alerts.length})`;
-    resultsSection.style.display = 'block';
+    updateActiveNav(4);
 
     let html = '<table class="data-table"><tr><th>Title</th><th>Severity</th><th>Status</th><th>Created</th></tr>';
 
@@ -469,11 +497,18 @@ function displayAlerts(alerts) {
 
 // Query Functions
 function showQueryBuilder() {
-    const querySection = document.getElementById('querySection');
-    const resultsSection = document.getElementById('resultsSection');
+    // Hide dashboard sections
+    const statsGrid = document.getElementById('statsGrid');
+    const recentPoliciesSection = statsGrid.parentElement.nextElementSibling;
 
-    querySection.style.display = 'block';
-    resultsSection.style.display = 'none';
+    if (statsGrid) statsGrid.style.display = 'none';
+    if (recentPoliciesSection) recentPoliciesSection.style.display = 'none';
+
+    // Hide results section
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Show query section
+    document.getElementById('querySection').style.display = 'block';
 
     // Set active nav item
     updateActiveNav(5);
