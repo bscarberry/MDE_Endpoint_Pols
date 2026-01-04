@@ -29,12 +29,8 @@ function closeModal() {
 
 // View Management
 function showDashboard() {
-    // Show dashboard sections
-    const statsGrid = document.getElementById('statsGrid');
-    const recentPoliciesSection = statsGrid.parentElement.nextElementSibling;
-
-    if (statsGrid) statsGrid.style.display = 'grid';
-    if (recentPoliciesSection) recentPoliciesSection.style.display = 'block';
+    // Show dashboard
+    document.getElementById('dashboardSection').style.display = 'block';
 
     // Hide other sections
     hideQueryBuilder();
@@ -45,12 +41,8 @@ function showDashboard() {
 }
 
 function showResultsSection() {
-    // Hide dashboard sections
-    const statsGrid = document.getElementById('statsGrid');
-    const recentPoliciesSection = statsGrid.parentElement.nextElementSibling;
-
-    if (statsGrid) statsGrid.style.display = 'none';
-    if (recentPoliciesSection) recentPoliciesSection.style.display = 'none';
+    // Hide dashboard
+    document.getElementById('dashboardSection').style.display = 'none';
 
     // Hide query section
     hideQueryBuilder();
@@ -497,12 +489,8 @@ function displayAlerts(alerts) {
 
 // Query Functions
 function showQueryBuilder() {
-    // Hide dashboard sections
-    const statsGrid = document.getElementById('statsGrid');
-    const recentPoliciesSection = statsGrid.parentElement.nextElementSibling;
-
-    if (statsGrid) statsGrid.style.display = 'none';
-    if (recentPoliciesSection) recentPoliciesSection.style.display = 'none';
+    // Hide dashboard
+    document.getElementById('dashboardSection').style.display = 'none';
 
     // Hide results section
     document.getElementById('resultsSection').style.display = 'none';
