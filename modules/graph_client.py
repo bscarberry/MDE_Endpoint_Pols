@@ -127,80 +127,88 @@ class GraphClient:
     # Endpoint Security Policies
     def get_endpoint_security_policies(self):
         """
-        Get all endpoint security policies with full details
-        Uses beta API and tries multiple methods to retrieve policies
+        Get all endpoint security policies from multiple sources
+        Combines results from intents, configurationPolicies, and deviceConfigurations
         """
         all_policies = []
 
-        # Method 1: Try to get from intents endpoint (beta)
+        # Method 1: Get from deviceConfigurations (PRIMARY SOURCE - Graph REST 1.0)
+        # This is where windows10EndpointProtectionConfiguration objects live
         try:
-            print("Attempting to retrieve endpoint security policies from intents (beta)...")
+            print("Attempting to retrieve endpoint security policies from deviceConfigurations...")
+            all_configs = self._get_all_pages('/deviceManagement/deviceConfigurations')
+            print(f"DEBUG: Found {len(all_configs)} total device configurations")
+
+            # Look for endpoint protection configurations
+            security_configs = []
+            for config in all_configs:
+                config_type = config.get('@odata.type', '')
+                display_name = config.get('displayName', '')
+
+                print(f"DEBUG: Checking config '{display_name}' with type '{config_type}'")
+
+                # Check for windows10EndpointProtectionConfiguration (the main type for endpoint security)
+                if config_type == '#microsoft.graph.windows10EndpointProtectionConfiguration':
+                    config['policySource'] = 'windows10EndpointProtectionConfiguration'
+                    security_configs.append(config)
+                    print(f"  ✓ Found endpoint protection config: {display_name}")
+                # Also check for other endpoint security related types
+                elif any(keyword in config_type.lower() for keyword in
+                        ['endpointprotection', 'firewall', 'defender', 'antivirus', 'security']):
+                    config['policySource'] = 'deviceConfigurations'
+                    security_configs.append(config)
+                    print(f"  ✓ Found security config: {display_name} ({config_type})")
+
+            print(f"Retrieved {len(security_configs)} endpoint security policies from deviceConfigurations")
+            all_policies.extend(security_configs)
+
+        except Exception as e:
+            print(f"ERROR retrieving from deviceConfigurations: {str(e)}")
+
+        # Method 2: Get from intents endpoint (beta) - newer style policies
+        try:
+            print("\nAttempting to retrieve from intents (beta)...")
             intents = self._get_all_pages('/deviceManagement/intents', use_beta=True)
-            print(f"DEBUG: Raw intents count: {len(intents)}")
+            print(f"DEBUG: Found {len(intents)} intents")
 
             # Get detailed info for each intent
             for idx, intent in enumerate(intents):
                 try:
                     print(f"DEBUG: Processing intent {idx + 1}/{len(intents)}: {intent.get('displayName', 'Unknown')}")
                     detailed_intent = self.get_intent_by_id(intent['id'])
+                    detailed_intent['policySource'] = 'intents'
                     all_policies.append(detailed_intent)
                 except Exception as e:
                     print(f"Warning: Could not get details for intent {intent.get('id')}: {str(e)}")
+                    intent['policySource'] = 'intents'
                     all_policies.append(intent)
 
-            print(f"Retrieved {len(all_policies)} endpoint security policies from intents")
-
-            # If we got policies from intents, return them
-            if len(all_policies) > 0:
-                return all_policies
+            print(f"Retrieved {len(intents)} policies from intents")
 
         except Exception as e:
             print(f"Intents endpoint failed: {str(e)}")
 
-        # Method 2: Try configuration policies from beta (Settings Catalog)
+        # Method 3: Try configuration policies from beta (Settings Catalog)
         try:
-            print("Attempting to retrieve from configurationPolicies (beta)...")
+            print("\nAttempting to retrieve from configurationPolicies (beta)...")
             config_policies = self._get_all_pages('/deviceManagement/configurationPolicies', use_beta=True)
             print(f"DEBUG: Found {len(config_policies)} configuration policies")
 
-            # Filter for endpoint security-related policies
+            # Add all configuration policies (Settings Catalog)
             for policy in config_policies:
                 policy['policySource'] = 'configurationPolicies'
                 all_policies.append(policy)
+                print(f"  ✓ Found Settings Catalog policy: {policy.get('name', 'Unknown')}")
 
-            if len(all_policies) > 0:
-                return all_policies
+            print(f"Retrieved {len(config_policies)} policies from configurationPolicies")
 
         except Exception as e:
             print(f"Configuration policies (beta) failed: {str(e)}")
 
-        # Method 3: Try device configurations with security filter
-        try:
-            print("Attempting to retrieve security policies from deviceConfigurations...")
-            all_configs = self._get_all_pages('/deviceManagement/deviceConfigurations', use_beta=True)
-            print(f"DEBUG: Found {len(all_configs)} total device configurations")
+        print(f"\n{'='*60}")
+        print(f"TOTAL: Retrieved {len(all_policies)} endpoint security policies from all sources")
+        print(f"{'='*60}\n")
 
-            # Filter for security-related configurations
-            security_configs = []
-            for config in all_configs:
-                config_type = config.get('@odata.type', '')
-                display_name = config.get('displayName', '').lower()
-
-                # Check if it's security-related
-                if any(keyword in config_type.lower() for keyword in ['security', 'firewall', 'defender', 'antivirus', 'endpoint']):
-                    config['policySource'] = 'deviceConfigurations'
-                    security_configs.append(config)
-                elif any(keyword in display_name for keyword in ['security', 'firewall', 'defender', 'antivirus', 'asr', 'edr']):
-                    config['policySource'] = 'deviceConfigurations'
-                    security_configs.append(config)
-
-            print(f"DEBUG: Filtered to {len(security_configs)} security configurations")
-            all_policies.extend(security_configs)
-
-        except Exception as e:
-            print(f"Device configurations failed: {str(e)}")
-
-        print(f"TOTAL: Returning {len(all_policies)} endpoint security policies from all sources")
         return all_policies
 
     def get_intent_by_id(self, intent_id):
