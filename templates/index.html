@@ -59,31 +59,31 @@
             <p class="text-muted">Loading policies...</p>
         </div>
     </div>
+</div>
 
-    <!-- Query Section -->
-    <div class="content-section" id="querySection" style="display: none;">
-        <div class="section-header">
-            <h3>Advanced Hunting Query</h3>
-            <button class="btn btn-secondary" onclick="hideQueryBuilder()">
-                <i class="fas fa-times"></i> Close
-            </button>
-        </div>
-        <div class="query-builder">
-            <textarea id="queryInput" placeholder="Enter KQL query here..." rows="10"></textarea>
-            <button class="btn btn-primary" onclick="executeQuery()">
-                <i class="fas fa-play"></i> Run Query
-            </button>
-        </div>
-        <div id="queryResults" class="query-results"></div>
+<!-- Query Section (moved outside dashboard) -->
+<div class="content-section" id="querySection" style="display: none;">
+    <div class="section-header">
+        <h3>Advanced Hunting Query</h3>
+        <button class="btn btn-secondary" onclick="hideQueryBuilder()">
+            <i class="fas fa-times"></i> Close
+        </button>
     </div>
+    <div class="query-builder">
+        <textarea id="queryInput" placeholder="Enter KQL query here..." rows="10"></textarea>
+        <button class="btn btn-primary" onclick="executeQuery()">
+            <i class="fas fa-play"></i> Run Query
+        </button>
+    </div>
+    <div id="queryResults" class="query-results"></div>
+</div>
 
-    <!-- Results Section -->
-    <div class="content-section" id="resultsSection" style="display: none;">
-        <div class="section-header">
-            <h3 id="resultsTitle">Results</h3>
-        </div>
-        <div id="resultsContent"></div>
+<!-- Results Section (moved outside dashboard) -->
+<div class="content-section" id="resultsSection" style="display: none;">
+    <div class="section-header">
+        <h3 id="resultsTitle">Results</h3>
     </div>
+    <div id="resultsContent"></div>
 </div>
 {% endblock %}
 
