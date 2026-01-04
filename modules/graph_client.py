@@ -200,16 +200,44 @@ class GraphClient:
 
     # All Policies Summary
     def get_all_policies_summary(self):
-        """Get summary of all endpoint policies"""
+        """Get summary of all endpoint policies - each endpoint is optional"""
+        policies = {}
+
+        # Try each endpoint individually - if one fails, continue with others
         try:
-            policies = {
-                'compliance_policies': self.get_device_compliance_policies(),
-                'configuration_policies': self.get_device_configurations(),
-                'endpoint_security_intents': self.get_intents(),
-                'configuration_profiles': self.get_configuration_policies(),
-                'device_scripts': self.get_device_management_scripts(),
-                'health_scripts': self.get_device_health_scripts(),
-            }
-            return policies
+            policies['compliance_policies'] = self.get_device_compliance_policies()
         except Exception as e:
-            raise Exception(f"Failed to retrieve policies: {str(e)}")
+            print(f"Warning: Could not retrieve compliance policies: {str(e)}")
+            policies['compliance_policies'] = []
+
+        try:
+            policies['configuration_policies'] = self.get_device_configurations()
+        except Exception as e:
+            print(f"Warning: Could not retrieve configuration policies: {str(e)}")
+            policies['configuration_policies'] = []
+
+        try:
+            policies['endpoint_security_intents'] = self.get_intents()
+        except Exception as e:
+            print(f"Warning: Could not retrieve endpoint security intents: {str(e)}")
+            policies['endpoint_security_intents'] = []
+
+        try:
+            policies['configuration_profiles'] = self.get_configuration_policies()
+        except Exception as e:
+            print(f"Warning: Could not retrieve configuration profiles: {str(e)}")
+            policies['configuration_profiles'] = []
+
+        try:
+            policies['device_scripts'] = self.get_device_management_scripts()
+        except Exception as e:
+            print(f"Warning: Could not retrieve device scripts: {str(e)}")
+            policies['device_scripts'] = []
+
+        try:
+            policies['health_scripts'] = self.get_device_health_scripts()
+        except Exception as e:
+            print(f"Warning: Could not retrieve health scripts: {str(e)}")
+            policies['health_scripts'] = []
+
+        return policies
