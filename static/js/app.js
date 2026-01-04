@@ -116,19 +116,19 @@ function displayRecentPolicies(policies) {
     const container = document.getElementById('recentPolicies');
     let html = '';
 
-    // Get first 5 policies from each type
+    // Get first 9 policies from endpoint security (showing most relevant)
     const recentPolicies = [];
 
-    if (policies.compliance_policies && policies.compliance_policies.length > 0) {
-        recentPolicies.push(...policies.compliance_policies.slice(0, 3).map(p => ({...p, type: 'compliance'})));
-    }
-
-    if (policies.configuration_policies && policies.configuration_policies.length > 0) {
-        recentPolicies.push(...policies.configuration_policies.slice(0, 3).map(p => ({...p, type: 'configuration'})));
-    }
-
     if (policies.endpoint_security_intents && policies.endpoint_security_intents.length > 0) {
-        recentPolicies.push(...policies.endpoint_security_intents.slice(0, 3).map(p => ({...p, type: 'intent'})));
+        recentPolicies.push(...policies.endpoint_security_intents.slice(0, 9));
+    }
+
+    if (recentPolicies.length === 0 && policies.compliance_policies && policies.compliance_policies.length > 0) {
+        recentPolicies.push(...policies.compliance_policies.slice(0, 5));
+    }
+
+    if (recentPolicies.length === 0 && policies.configuration_policies && policies.configuration_policies.length > 0) {
+        recentPolicies.push(...policies.configuration_policies.slice(0, 5));
     }
 
     if (recentPolicies.length === 0) {
@@ -137,16 +137,23 @@ function displayRecentPolicies(policies) {
     }
 
     recentPolicies.forEach(policy => {
-        const badgeClass = policy.type === 'compliance' ? 'badge-compliance' :
-                          policy.type === 'configuration' ? 'badge-configuration' : 'badge-security';
+        const displayName = getPolicyDisplayName(policy);
+        const description = policy.description || 'No description available';
+        const policyType = getPolicyType(policy);
+        const category = categorizePolicyType(policy);
+
+        const badgeClass = category.includes('Antivirus') || category.includes('EDR') ? 'badge-security' :
+                          category.includes('Firewall') ? 'badge-compliance' :
+                          category.includes('ASR') || category.includes('Attack Surface') ? 'badge-security' :
+                          'badge-configuration';
 
         html += `
-            <div class="policy-item" onclick="viewPolicyDetails('${policy.type}', '${policy.id}')">
+            <div class="policy-item" onclick="viewPolicyDetails('${policyType}', '${policy.id}')">
                 <div class="policy-header">
-                    <div class="policy-name">${policy.displayName || 'Unnamed Policy'}</div>
-                    <span class="policy-badge ${badgeClass}">${policy.type}</span>
+                    <div class="policy-name">${displayName}</div>
+                    <span class="policy-badge ${badgeClass}">${category}</span>
                 </div>
-                <div class="policy-description">${policy.description || 'No description available'}</div>
+                <div class="policy-description">${description}</div>
             </div>
         `;
     });
@@ -213,14 +220,74 @@ function displayAllPolicies(policies) {
     resultsContent.innerHTML = html;
 }
 
+function getPolicyDisplayName(policy) {
+    return policy.displayName || policy.name || 'Unnamed Policy';
+}
+
+function getPolicyType(policy) {
+    const name = getPolicyDisplayName(policy).toLowerCase();
+
+    // Check policy source first
+    if (policy.policySource) {
+        if (policy.policySource === 'intents') return 'intent';
+        if (policy.policySource === 'configurationPolicies') return 'configuration_profile';
+        if (policy.policySource === 'windows10EndpointProtectionConfiguration') return 'configuration';
+        if (policy.policySource === 'deviceConfigurations') return 'configuration';
+    }
+
+    // Fallback to checking @odata.type
+    const odataType = policy['@odata.type'] || '';
+    if (odataType.includes('windows10EndpointProtectionConfiguration')) return 'configuration';
+
+    return 'configuration_profile';
+}
+
+function categorizePolicyType(policy) {
+    const name = getPolicyDisplayName(policy).toLowerCase();
+
+    // Categorize based on policy name
+    if (name.includes('antivirus') || name.includes('defender') || name.includes('av -')) {
+        return 'Antivirus';
+    } else if (name.includes('firewall')) {
+        return 'Firewall';
+    } else if (name.includes('asr') || name.includes('attack surface')) {
+        return 'Attack Surface Reduction';
+    } else if (name.includes('edr') || name.includes('onboard')) {
+        return 'EDR';
+    } else if (name.includes('device control')) {
+        return 'Device Control';
+    } else if (name.includes('app control') || name.includes('wdac')) {
+        return 'App Control';
+    } else if (name.includes('bitlocker') || name.includes('encryption')) {
+        return 'Encryption';
+    }
+
+    // Check template ID if available
+    if (policy.templateId) {
+        const templateId = policy.templateId.toLowerCase();
+        if (templateId.includes('antivirus')) return 'Antivirus';
+        if (templateId.includes('firewall')) return 'Firewall';
+        if (templateId.includes('attacksurfacereduction')) return 'Attack Surface Reduction';
+    }
+
+    return 'Security Policy';
+}
+
 function createPolicyCard(policy, type, badgeClass) {
+    const displayName = getPolicyDisplayName(policy);
+    const description = policy.description || 'No description available';
+    const policyType = getPolicyType(policy);
+    const category = categorizePolicyType(policy);
+
     return `
-        <div class="policy-item" onclick="viewPolicyDetails('${type}', '${policy.id}')">
+        <div class="policy-item" onclick="viewPolicyDetails('${policyType}', '${policy.id}')">
             <div class="policy-header">
-                <div class="policy-name">${policy.displayName || 'Unnamed Policy'}</div>
-                <span class="policy-badge ${badgeClass}">${type}</span>
+                <div class="policy-name">${displayName}</div>
+                <div style="display: flex; gap: 8px;">
+                    <span class="policy-badge ${badgeClass}">${category}</span>
+                </div>
             </div>
-            <div class="policy-description">${policy.description || 'No description available'}</div>
+            <div class="policy-description">${description}</div>
         </div>
     `;
 }
@@ -230,8 +297,10 @@ async function viewPolicyDetails(policyType, policyId) {
         const data = await fetchAPI(`/api/policies/${policyType}/${policyId}`);
         const policy = data.data;
 
+        const displayName = policy.displayName || policy.name || 'Policy Details';
+
         let html = `
-            <h2>${policy.displayName || 'Policy Details'}</h2>
+            <h2>${displayName}</h2>
             <div style="margin-top: 20px;">
                 <h3>Information</h3>
                 <table class="data-table">
@@ -245,7 +314,7 @@ async function viewPolicyDetails(policyType, policyId) {
                     </tr>
                     <tr>
                         <td>Display Name</td>
-                        <td>${policy.displayName}</td>
+                        <td>${displayName}</td>
                     </tr>
                     <tr>
                         <td>Description</td>
