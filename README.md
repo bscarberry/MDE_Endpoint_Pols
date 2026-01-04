@@ -49,12 +49,17 @@ A comprehensive web-based application for managing and monitoring Microsoft Defe
 ### Microsoft Graph API Permissions
 Your Azure AD app registration needs the following **Application** permissions:
 
+**Required:**
 - `DeviceManagementConfiguration.Read.All` - Read device configurations
 - `DeviceManagementManagedDevices.Read.All` - Read managed devices
 - `DeviceManagementServiceConfig.Read.All` - Read service configuration
 - `Group.Read.All` - Read groups (for policy assignments)
 
+**Optional:**
+- `DeviceManagementScripts.Read.All` - Read PowerShell scripts and health monitoring scripts (if you want to view scripts)
+
 ### Microsoft Defender API Permissions
+**Required:**
 - `AdvancedQuery.Read.All` - Run advanced hunting queries
 - `Machine.Read.All` - Read machine information
 - `Alert.Read.All` - Read security alerts
