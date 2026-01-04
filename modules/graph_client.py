@@ -136,10 +136,12 @@ class GraphClient:
         try:
             print("Attempting to retrieve endpoint security policies from intents (beta)...")
             intents = self._get_all_pages('/deviceManagement/intents', use_beta=True)
+            print(f"DEBUG: Raw intents count: {len(intents)}")
 
             # Get detailed info for each intent
-            for intent in intents:
+            for idx, intent in enumerate(intents):
                 try:
+                    print(f"DEBUG: Processing intent {idx + 1}/{len(intents)}: {intent.get('displayName', 'Unknown')}")
                     detailed_intent = self.get_intent_by_id(intent['id'])
                     all_policies.append(detailed_intent)
                 except Exception as e:
@@ -147,29 +149,59 @@ class GraphClient:
                     all_policies.append(intent)
 
             print(f"Retrieved {len(all_policies)} endpoint security policies from intents")
-            return all_policies
+
+            # If we got policies from intents, return them
+            if len(all_policies) > 0:
+                return all_policies
 
         except Exception as e:
             print(f"Intents endpoint failed: {str(e)}")
 
-        # Method 2: Try to get from templates endpoint (beta)
+        # Method 2: Try configuration policies from beta (Settings Catalog)
         try:
-            print("Attempting to retrieve endpoint security policies from templates...")
-            templates = self._get_all_pages('/deviceManagement/templates', use_beta=True)
+            print("Attempting to retrieve from configurationPolicies (beta)...")
+            config_policies = self._get_all_pages('/deviceManagement/configurationPolicies', use_beta=True)
+            print(f"DEBUG: Found {len(config_policies)} configuration policies")
 
-            # Filter for endpoint security templates
-            security_templates = [t for t in templates if t.get('templateType') == 'securityBaseline' or
-                                 'security' in t.get('displayName', '').lower() or
-                                 'firewall' in t.get('displayName', '').lower() or
-                                 'antivirus' in t.get('displayName', '').lower()]
+            # Filter for endpoint security-related policies
+            for policy in config_policies:
+                policy['policySource'] = 'configurationPolicies'
+                all_policies.append(policy)
 
-            print(f"Found {len(security_templates)} security template types")
-            return security_templates
+            if len(all_policies) > 0:
+                return all_policies
 
         except Exception as e:
-            print(f"Templates endpoint failed: {str(e)}")
+            print(f"Configuration policies (beta) failed: {str(e)}")
 
-        return []
+        # Method 3: Try device configurations with security filter
+        try:
+            print("Attempting to retrieve security policies from deviceConfigurations...")
+            all_configs = self._get_all_pages('/deviceManagement/deviceConfigurations', use_beta=True)
+            print(f"DEBUG: Found {len(all_configs)} total device configurations")
+
+            # Filter for security-related configurations
+            security_configs = []
+            for config in all_configs:
+                config_type = config.get('@odata.type', '')
+                display_name = config.get('displayName', '').lower()
+
+                # Check if it's security-related
+                if any(keyword in config_type.lower() for keyword in ['security', 'firewall', 'defender', 'antivirus', 'endpoint']):
+                    config['policySource'] = 'deviceConfigurations'
+                    security_configs.append(config)
+                elif any(keyword in display_name for keyword in ['security', 'firewall', 'defender', 'antivirus', 'asr', 'edr']):
+                    config['policySource'] = 'deviceConfigurations'
+                    security_configs.append(config)
+
+            print(f"DEBUG: Filtered to {len(security_configs)} security configurations")
+            all_policies.extend(security_configs)
+
+        except Exception as e:
+            print(f"Device configurations failed: {str(e)}")
+
+        print(f"TOTAL: Returning {len(all_policies)} endpoint security policies from all sources")
+        return all_policies
 
     def get_intent_by_id(self, intent_id):
         """Get specific security intent with full settings and assignments"""
@@ -241,23 +273,23 @@ class GraphClient:
     # Device Health Scripts
     def get_device_health_scripts(self):
         """Get all device health monitoring scripts"""
-        return self._get_all_pages('/deviceManagement/deviceHealthScripts')
+        return self._get_all_pages('/deviceManagement/deviceHealthScripts', use_beta=True)
 
     # Windows Update Policies
     def get_windows_update_policies(self):
         """Get Windows Update for Business policies"""
-        return self._get_all_pages('/deviceManagement/deviceConfigurations?$filter=isof(%27microsoft.graph.windowsUpdateForBusinessConfiguration%27)')
+        return self._get_all_pages('/deviceManagement/deviceConfigurations?$filter=isof(%27microsoft.graph.windowsUpdateForBusinessConfiguration%27)', use_beta=True)
 
     # Configuration Profiles (Settings Catalog)
     def get_configuration_policies(self):
         """Get configuration policies (Settings Catalog)"""
-        return self._get_all_pages('/deviceManagement/configurationPolicies')
+        return self._get_all_pages('/deviceManagement/configurationPolicies', use_beta=True)
 
     def get_configuration_policy_by_id(self, policy_id):
         """Get specific configuration policy with settings and assignments"""
-        policy = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}')
-        settings = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/settings')
-        assignments = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/assignments')
+        policy = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}', use_beta=True)
+        settings = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/settings', use_beta=True)
+        assignments = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/assignments', use_beta=True)
 
         policy['settings'] = settings.get('value', [])
         policy['assignments'] = assignments.get('value', [])
@@ -266,7 +298,7 @@ class GraphClient:
     # Scripts
     def get_device_management_scripts(self):
         """Get all PowerShell scripts"""
-        return self._get_all_pages('/deviceManagement/deviceManagementScripts')
+        return self._get_all_pages('/deviceManagement/deviceManagementScripts', use_beta=True)
 
     # Managed Devices
     def get_managed_devices(self):
