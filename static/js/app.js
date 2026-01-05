@@ -205,42 +205,123 @@ function displayAllPolicies(policies) {
     resultsTitle.textContent = 'All Endpoint Policies';
     updateActiveNav(1);
 
-    let html = '<div class="policy-list">';
+    // Count total policies
+    let totalCount = 0;
+    const allPolicies = [];
 
-    // Compliance Policies
-    if (policies.compliance_policies && policies.compliance_policies.length > 0) {
-        html += '<h4>Compliance Policies</h4>';
-        policies.compliance_policies.forEach(policy => {
-            html += createPolicyCard(policy, 'compliance', 'badge-compliance');
+    // Collect all policies into a single array
+    if (policies.compliance_policies) {
+        policies.compliance_policies.forEach(p => {
+            allPolicies.push({...p, sourceType: 'Compliance Policy'});
         });
+        totalCount += policies.compliance_policies.length;
     }
 
-    // Configuration Policies
-    if (policies.configuration_policies && policies.configuration_policies.length > 0) {
-        html += '<h4 class="mt-2">Configuration Policies</h4>';
-        policies.configuration_policies.forEach(policy => {
-            html += createPolicyCard(policy, 'configuration', 'badge-configuration');
+    if (policies.configuration_policies) {
+        policies.configuration_policies.forEach(p => {
+            allPolicies.push({...p, sourceType: 'Configuration Policy'});
         });
+        totalCount += policies.configuration_policies.length;
     }
 
-    // Endpoint Security Intents
-    if (policies.endpoint_security_intents && policies.endpoint_security_intents.length > 0) {
-        html += '<h4 class="mt-2">Endpoint Security Policies</h4>';
-        policies.endpoint_security_intents.forEach(policy => {
-            html += createPolicyCard(policy, 'intent', 'badge-security');
+    if (policies.endpoint_security_intents) {
+        policies.endpoint_security_intents.forEach(p => {
+            allPolicies.push({...p, sourceType: 'Endpoint Security'});
         });
+        totalCount += policies.endpoint_security_intents.length;
     }
 
-    // Configuration Profiles
-    if (policies.configuration_profiles && policies.configuration_profiles.length > 0) {
-        html += '<h4 class="mt-2">Configuration Profiles (Settings Catalog)</h4>';
-        policies.configuration_profiles.forEach(policy => {
-            html += createPolicyCard(policy, 'configuration_profile', 'badge-configuration');
+    if (policies.configuration_profiles) {
+        policies.configuration_profiles.forEach(p => {
+            allPolicies.push({...p, sourceType: 'Settings Catalog'});
         });
+        totalCount += policies.configuration_profiles.length;
     }
 
-    html += '</div>';
+    // Create table
+    let html = `
+        <div style="margin-bottom: 16px;">
+            <p>Total Policies: ${totalCount}</p>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Policy Name</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Platform</th>
+                    <th>Assignments</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    allPolicies.forEach(policy => {
+        const displayName = getPolicyDisplayName(policy);
+        const category = categorizePolicyType(policy);
+        const policyType = getPolicyType(policy);
+        const sourceType = policy.sourceType || 'Unknown';
+        const platform = getPolicyPlatform(policy);
+        const assignmentCount = policy.assignments ? policy.assignments.length : 'Unknown';
+
+        html += `
+            <tr onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
+                <td><strong>${displayName}</strong></td>
+                <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
+                <td>${sourceType}</td>
+                <td>${platform}</td>
+                <td>${assignmentCount === 'Unknown' ? 'View Details' : assignmentCount + ' group(s)'}</td>
+                <td>
+                    <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
+                            onclick="event.stopPropagation(); viewPolicyDetails('${policyType}', '${policy.id}')">
+                        View
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
     resultsContent.innerHTML = html;
+}
+
+function getPolicyPlatform(policy) {
+    const name = getPolicyDisplayName(policy).toLowerCase();
+    const odataType = policy['@odata.type'] || '';
+
+    // Check policy name for platform indicators
+    if (name.includes('macos') || name.includes('mac os')) {
+        return 'macOS';
+    } else if (name.includes('ios')) {
+        return 'iOS';
+    } else if (name.includes('android')) {
+        return 'Android';
+    } else if (name.includes('windows') || name.includes('win -') || name.includes('win-')) {
+        return 'Windows';
+    }
+
+    // Check @odata.type for platform
+    if (odataType.includes('windows')) {
+        return 'Windows';
+    } else if (odataType.includes('macOS') || odataType.includes('mac')) {
+        return 'macOS';
+    } else if (odataType.includes('ios')) {
+        return 'iOS';
+    } else if (odataType.includes('android')) {
+        return 'Android';
+    }
+
+    // Check policy platforms array if available
+    if (policy.platforms && policy.platforms.length > 0) {
+        return policy.platforms.join(', ');
+    }
+
+    return 'Multi-platform';
 }
 
 function getPolicyDisplayName(policy) {

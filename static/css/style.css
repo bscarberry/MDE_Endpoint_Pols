@@ -355,8 +355,17 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
-.data-table tr:hover {
+.data-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.data-table tbody tr:hover {
     background-color: var(--hover-bg);
+}
+
+.data-table tbody tr[style*="cursor: pointer"]:hover {
+    background-color: var(--hover-bg);
+    transform: translateX(2px);
 }
 
 /* Modal */
