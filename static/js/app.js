@@ -205,12 +205,15 @@ function displayAllPolicies(policies) {
     resultsTitle.textContent = 'All Endpoint Policies';
     updateActiveNav(1);
 
+    console.log('Policies data:', policies);
+
     // Count total policies
     let totalCount = 0;
     const allPolicies = [];
 
     // Collect all policies into a single array
     if (policies.compliance_policies) {
+        console.log('Compliance policies:', policies.compliance_policies.length);
         policies.compliance_policies.forEach(p => {
             allPolicies.push({...p, sourceType: 'Compliance Policy'});
         });
@@ -218,6 +221,7 @@ function displayAllPolicies(policies) {
     }
 
     if (policies.configuration_policies) {
+        console.log('Configuration policies:', policies.configuration_policies.length);
         policies.configuration_policies.forEach(p => {
             allPolicies.push({...p, sourceType: 'Configuration Policy'});
         });
@@ -225,6 +229,7 @@ function displayAllPolicies(policies) {
     }
 
     if (policies.endpoint_security_intents) {
+        console.log('Endpoint security intents:', policies.endpoint_security_intents.length);
         policies.endpoint_security_intents.forEach(p => {
             allPolicies.push({...p, sourceType: 'Endpoint Security'});
         });
@@ -232,16 +237,25 @@ function displayAllPolicies(policies) {
     }
 
     if (policies.configuration_profiles) {
+        console.log('Configuration profiles:', policies.configuration_profiles.length);
         policies.configuration_profiles.forEach(p => {
             allPolicies.push({...p, sourceType: 'Settings Catalog'});
         });
         totalCount += policies.configuration_profiles.length;
     }
 
+    console.log('Total policies:', totalCount);
+    console.log('All policies array:', allPolicies);
+
+    if (totalCount === 0) {
+        resultsContent.innerHTML = '<p class="text-muted">No policies found</p>';
+        return;
+    }
+
     // Create table
     let html = `
         <div style="margin-bottom: 16px;">
-            <p>Total Policies: ${totalCount}</p>
+            <p><strong>Total Policies: ${totalCount}</strong></p>
         </div>
         <table class="data-table">
             <thead>
@@ -257,30 +271,37 @@ function displayAllPolicies(policies) {
             <tbody>
     `;
 
-    allPolicies.forEach(policy => {
-        const displayName = getPolicyDisplayName(policy);
-        const category = categorizePolicyType(policy);
-        const policyType = getPolicyType(policy);
-        const sourceType = policy.sourceType || 'Unknown';
-        const platform = getPolicyPlatform(policy);
-        const assignmentCount = policy.assignments ? policy.assignments.length : 'Unknown';
+    try {
+        allPolicies.forEach(policy => {
+            const displayName = getPolicyDisplayName(policy);
+            const category = categorizePolicyType(policy);
+            const policyType = getPolicyType(policy);
+            const sourceType = policy.sourceType || 'Unknown';
+            const platform = getPolicyPlatform(policy);
+            const assignmentCount = policy.assignments ? policy.assignments.length : 'Unknown';
+            const assignmentText = assignmentCount === 'Unknown' ? 'View Details' : assignmentCount + ' group(s)';
 
-        html += `
-            <tr onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
-                <td><strong>${displayName}</strong></td>
-                <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
-                <td>${sourceType}</td>
-                <td>${platform}</td>
-                <td>${assignmentCount === 'Unknown' ? 'View Details' : assignmentCount + ' group(s)'}</td>
-                <td>
-                    <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
-                            onclick="event.stopPropagation(); viewPolicyDetails('${policyType}', '${policy.id}')">
-                        View
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
+            html += `
+                <tr onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
+                    <td><strong>${displayName}</strong></td>
+                    <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
+                    <td>${sourceType}</td>
+                    <td>${platform}</td>
+                    <td>${assignmentText}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
+                                onclick="event.stopPropagation(); viewPolicyDetails('${policyType}', '${policy.id}')">
+                            View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error('Error building table:', error);
+        resultsContent.innerHTML = `<p class="text-muted">Error displaying policies: ${error.message}</p>`;
+        return;
+    }
 
     html += `
             </tbody>
@@ -288,6 +309,7 @@ function displayAllPolicies(policies) {
     `;
 
     resultsContent.innerHTML = html;
+    console.log('Table rendered successfully');
 }
 
 function getPolicyPlatform(policy) {
