@@ -353,7 +353,15 @@ function getPolicyDisplayName(policy) {
 function getPolicyType(policy) {
     const name = getPolicyDisplayName(policy).toLowerCase();
 
-    // Check policy source first
+    // Check sourceType first (set when displaying in table)
+    if (policy.sourceType) {
+        if (policy.sourceType === 'Compliance Policy') return 'compliance';
+        if (policy.sourceType === 'Configuration Policy') return 'configuration';
+        if (policy.sourceType === 'Endpoint Security') return 'intent';
+        if (policy.sourceType === 'Settings Catalog') return 'configuration_profile';
+    }
+
+    // Check policy source
     if (policy.policySource) {
         if (policy.policySource === 'intents') return 'intent';
         if (policy.policySource === 'configurationPolicies') return 'configuration_profile';
@@ -363,6 +371,7 @@ function getPolicyType(policy) {
 
     // Fallback to checking @odata.type
     const odataType = policy['@odata.type'] || '';
+    if (odataType.includes('deviceCompliancePolicy')) return 'compliance';
     if (odataType.includes('windows10EndpointProtectionConfiguration')) return 'configuration';
 
     return 'configuration_profile';
