@@ -339,7 +339,7 @@ function getPolicyPlatform(policy) {
     }
 
     // Check policy platforms array if available
-    if (policy.platforms && policy.platforms.length > 0) {
+    if (policy.platforms && Array.isArray(policy.platforms) && policy.platforms.length > 0) {
         return policy.platforms.join(', ');
     }
 
