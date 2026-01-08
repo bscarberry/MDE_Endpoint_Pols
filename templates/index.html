@@ -2,59 +2,52 @@
 
 {% block content %}
 <div id="dashboardSection" class="dashboard">
-    <h2>Dashboard Overview</h2>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <p class="code-comment">/* endpoint security manager */</p>
+        <h1 class="hero-title">defender<span class="text-green">X</span>dr<span class="terminal-cursor">_</span></h1>
+        <p class="hero-subtitle">Manage and monitor endpoint policies across your organization. Built for security operations.</p>
+        <div class="hero-actions">
+            <button class="btn-primary" onclick="loadPolicies()">
+                <i class="fas fa-shield-alt"></i>
+                view_all_policies()
+            </button>
+            <button class="btn-secondary" onclick="showQueryBuilder()">
+                <i class="fas fa-search"></i>
+                advanced_hunting()
+            </button>
+        </div>
+    </div>
 
     <!-- Stats Cards -->
     <div class="stats-grid" id="statsGrid">
         <div class="stat-card">
-            <div class="stat-icon blue">
-                <i class="fas fa-file-shield"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="compliancePolicyCount">-</h3>
-                <p>Compliance Policies</p>
-            </div>
+            <h3 id="compliancePolicyCount" class="stat-number">-</h3>
+            <p class="stat-label">compliance_policies</p>
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon green">
-                <i class="fas fa-cog"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="configPolicyCount">-</h3>
-                <p>Configuration Policies</p>
-            </div>
+            <h3 id="configPolicyCount" class="stat-number">-</h3>
+            <p class="stat-label">config_policies</p>
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon orange">
-                <i class="fas fa-shield-virus"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="securityPolicyCount">-</h3>
-                <p>Security Intents</p>
-            </div>
+            <h3 id="securityPolicyCount" class="stat-number">-</h3>
+            <p class="stat-label">security_intents</p>
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon purple">
-                <i class="fas fa-laptop"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="deviceCount">-</h3>
-                <p>Managed Devices</p>
-            </div>
+            <h3 id="deviceCount" class="stat-number">-</h3>
+            <p class="stat-label">managed_devices</p>
         </div>
     </div>
 
     <!-- Recent Policies -->
+    <div class="section-title">
+        <span class="nav-comment">//</span> recent_policies
+        <a href="#" onclick="loadPolicies(); return false;" class="view-all">view_all() →</a>
+    </div>
     <div class="content-section">
-        <div class="section-header">
-            <h3>Recent Policies</h3>
-            <button class="btn btn-primary" onclick="loadPolicies()">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-        </div>
         <div id="recentPolicies" class="policy-list">
             <p class="text-muted">Loading policies...</p>
         </div>
@@ -63,27 +56,29 @@
 
 <!-- Query Section (moved outside dashboard) -->
 <div class="content-section" id="querySection" style="display: none;">
-    <div class="section-header">
-        <h3>Advanced Hunting Query</h3>
-        <button class="btn btn-secondary" onclick="hideQueryBuilder()">
-            <i class="fas fa-times"></i> Close
+    <div class="section-title">
+        <span class="nav-comment">//</span> advanced_hunting
+        <button class="btn-secondary" onclick="hideQueryBuilder()">
+            <i class="fas fa-times"></i> close()
         </button>
     </div>
     <div class="query-builder">
-        <textarea id="queryInput" placeholder="Enter KQL query here..." rows="10"></textarea>
-        <button class="btn btn-primary" onclick="executeQuery()">
-            <i class="fas fa-play"></i> Run Query
+        <textarea id="queryInput" placeholder="// Enter KQL query here..." rows="10"></textarea>
+        <button class="btn-primary" onclick="executeQuery()">
+            <i class="fas fa-play"></i> run_query()
         </button>
     </div>
     <div id="queryResults" class="query-results"></div>
 </div>
 
 <!-- Results Section (moved outside dashboard) -->
-<div class="content-section" id="resultsSection" style="display: none;">
-    <div class="section-header">
-        <h3 id="resultsTitle">Results</h3>
+<div id="resultsSection" style="display: none;">
+    <div class="section-title">
+        <span class="nav-comment">//</span> <span id="resultsTitle">results</span>
     </div>
-    <div id="resultsContent"></div>
+    <div class="content-section">
+        <div id="resultsContent"></div>
+    </div>
 </div>
 {% endblock %}
 

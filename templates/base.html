@@ -13,33 +13,39 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-shield-alt"></i>
-                <h1>Defender XDR</h1>
+                <span class="header-prompt">&gt;</span>
+                <h1>defender<span class="text-green">X</span>dr<span class="terminal-cursor">_</span></h1>
             </div>
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item active" onclick="showDashboard(); return false;">
                     <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
+                    <span class="nav-comment">//</span>
+                    <span>dashboard</span>
                 </a>
                 <a href="#" class="nav-item" onclick="loadPolicies(); return false;">
                     <i class="fas fa-file-shield"></i>
-                    <span>Endpoint Policies</span>
+                    <span class="nav-comment">//</span>
+                    <span>endpoint_policies</span>
                 </a>
                 <a href="#" class="nav-item" onclick="loadDevices(); return false;">
                     <i class="fas fa-laptop"></i>
-                    <span>Managed Devices</span>
+                    <span class="nav-comment">//</span>
+                    <span>managed_devices</span>
                 </a>
                 <a href="#" class="nav-item" onclick="loadMachines(); return false;">
                     <i class="fas fa-server"></i>
-                    <span>Defender Machines</span>
+                    <span class="nav-comment">//</span>
+                    <span>defender_machines</span>
                 </a>
                 <a href="#" class="nav-item" onclick="loadAlerts(); return false;">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>Security Alerts</span>
+                    <span class="nav-comment">//</span>
+                    <span>security_alerts</span>
                 </a>
                 <a href="#" class="nav-item" onclick="showQueryBuilder(); return false;">
                     <i class="fas fa-search"></i>
-                    <span>Advanced Hunting</span>
+                    <span class="nav-comment">//</span>
+                    <span>advanced_hunting</span>
                 </a>
             </nav>
         </aside>
@@ -47,14 +53,27 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-bar">
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Search policies..." onkeyup="handleSearch(event)">
+                <div class="top-nav">
+                    <a href="#" onclick="showDashboard(); return false;">
+                        <i class="fas fa-home"></i>
+                        <span class="nav-comment">//</span>
+                        <span>home</span>
+                    </a>
+                    <a href="#" onclick="loadPolicies(); return false;">
+                        <i class="fas fa-file-shield"></i>
+                        <span class="nav-comment">//</span>
+                        <span>policies</span>
+                    </a>
+                    <a href="#" onclick="loadAlerts(); return false;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span class="nav-comment">//</span>
+                        <span>alerts</span>
+                    </a>
                 </div>
-                <div class="user-info">
-                    <i class="fas fa-user-circle"></i>
-                    <span>Admin</span>
-                </div>
+                <button class="btn-primary" onclick="loadPolicies()">
+                    <i class="fas fa-sync"></i>
+                    refresh_policies()
+                </button>
             </header>
 
             <div class="content-area">
