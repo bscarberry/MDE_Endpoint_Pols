@@ -323,31 +323,76 @@ class GraphClient:
         return self._make_request('GET', f'/groups/{group_id}')
 
     # All Policies Summary
+    def _add_assignment_counts(self, policies, policy_type=None):
+        """Add assignment counts to policies without fetching full assignment data"""
+        for policy in policies:
+            try:
+                policy_id = policy.get('id')
+                if not policy_id:
+                    policy['assignmentCount'] = 0
+                    continue
+
+                # Determine the actual policy type - check policySource first, then use parameter
+                actual_type = policy_type
+                if policy.get('policySource'):
+                    if policy['policySource'] == 'intents':
+                        actual_type = 'intent'
+                    elif policy['policySource'] == 'configurationPolicies':
+                        actual_type = 'configuration_profile'
+                    elif policy['policySource'] in ['windows10EndpointProtectionConfiguration', 'deviceConfigurations']:
+                        actual_type = 'configuration'
+
+                # Fetch assignments based on actual policy type
+                if actual_type == 'compliance':
+                    assignments = self._make_request('GET', f'/deviceManagement/deviceCompliancePolicies/{policy_id}/assignments')
+                elif actual_type == 'configuration':
+                    assignments = self._make_request('GET', f'/deviceManagement/deviceConfigurations/{policy_id}/assignments')
+                elif actual_type == 'intent':
+                    assignments = self._make_request('GET', f'/deviceManagement/intents/{policy_id}/assignments', use_beta=True)
+                elif actual_type == 'configuration_profile':
+                    assignments = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/assignments', use_beta=True)
+                else:
+                    policy['assignmentCount'] = 0
+                    continue
+
+                policy['assignmentCount'] = len(assignments.get('value', []))
+            except Exception as e:
+                print(f"Warning: Could not get assignments for policy {policy.get('displayName', 'Unknown')}: {str(e)}")
+                policy['assignmentCount'] = 0
+
+        return policies
+
     def get_all_policies_summary(self):
         """Get summary of all endpoint policies - each endpoint is optional"""
         policies = {}
 
         # Try each endpoint individually - if one fails, continue with others
         try:
-            policies['compliance_policies'] = self.get_device_compliance_policies()
+            compliance_policies = self.get_device_compliance_policies()
+            policies['compliance_policies'] = self._add_assignment_counts(compliance_policies, 'compliance')
         except Exception as e:
             print(f"Warning: Could not retrieve compliance policies: {str(e)}")
             policies['compliance_policies'] = []
 
         try:
-            policies['configuration_policies'] = self.get_device_configurations()
+            config_policies = self.get_device_configurations()
+            policies['configuration_policies'] = self._add_assignment_counts(config_policies, 'configuration')
         except Exception as e:
             print(f"Warning: Could not retrieve configuration policies: {str(e)}")
             policies['configuration_policies'] = []
 
         try:
-            policies['endpoint_security_intents'] = self.get_intents()
+            # get_intents() calls get_endpoint_security_policies() which returns mixed policy types
+            # Each policy has policySource set, so _add_assignment_counts will route correctly
+            intents = self.get_intents()
+            policies['endpoint_security_intents'] = self._add_assignment_counts(intents)
         except Exception as e:
             print(f"Warning: Could not retrieve endpoint security intents: {str(e)}")
             policies['endpoint_security_intents'] = []
 
         try:
-            policies['configuration_profiles'] = self.get_configuration_policies()
+            config_profiles = self.get_configuration_policies()
+            policies['configuration_profiles'] = self._add_assignment_counts(config_profiles, 'configuration_profile')
         except Exception as e:
             print(f"Warning: Could not retrieve configuration profiles: {str(e)}")
             policies['configuration_profiles'] = []

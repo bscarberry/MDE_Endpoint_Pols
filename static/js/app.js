@@ -278,8 +278,8 @@ function displayAllPolicies(policies) {
             const policyType = getPolicyType(policy);
             const sourceType = policy.sourceType || 'Unknown';
             const platform = getPolicyPlatform(policy);
-            const assignmentCount = policy.assignments ? policy.assignments.length : 'Unknown';
-            const assignmentText = assignmentCount === 'Unknown' ? 'View Details' : assignmentCount + ' group(s)';
+            const assignmentCount = policy.assignmentCount !== undefined ? policy.assignmentCount : 0;
+            const assignmentText = assignmentCount + ' group(s)';
 
             html += `
                 <tr onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
