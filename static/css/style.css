@@ -591,6 +591,61 @@ body {
     margin-top: 8px;
 }
 
+/* Filters */
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--terminal-green);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-select {
+    background-color: var(--gray-900);
+    border: 1px solid var(--gray-800);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    transition: all 0.2s;
+    min-height: 42px;
+}
+
+.filter-select[multiple] {
+    min-height: 100px;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--terminal-green);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.5);
+}
+
+.filter-select option {
+    padding: 6px;
+    background-color: var(--gray-900);
+    color: var(--text-primary);
+}
+
+.filter-select option:checked {
+    background-color: rgba(16, 185, 129, 0.3);
+    color: var(--terminal-green);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

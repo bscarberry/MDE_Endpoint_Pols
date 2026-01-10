@@ -202,7 +202,7 @@ function displayAllPolicies(policies) {
     const resultsTitle = document.getElementById('resultsTitle');
     const resultsContent = document.getElementById('resultsContent');
 
-    resultsTitle.textContent = 'All Endpoint Policies';
+    resultsTitle.textContent = 'all_endpoint_policies';
     updateActiveNav(1);
 
     console.log('Policies data:', policies);
@@ -252,11 +252,57 @@ function displayAllPolicies(policies) {
         return;
     }
 
-    // Create table
+    // Store policies globally for filtering
+    window.allPoliciesData = allPolicies;
+
+    // Extract unique values for filters
+    const categories = [...new Set(allPolicies.map(p => categorizePolicyType(p)))].sort();
+    const types = [...new Set(allPolicies.map(p => p.sourceType))].sort();
+    const platforms = [...new Set(allPolicies.map(p => getPolicyPlatform(p)))].sort();
+
+    // Create filters and table
     let html = `
-        <div style="margin-bottom: 16px;">
-            <p><strong>Total Policies: ${totalCount}</strong></p>
+        <div style="margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <p><strong>Total Policies: <span id="filteredCount">${totalCount}</span> / ${totalCount}</strong></p>
+                <button class="btn-secondary" onclick="clearAllFilters()" style="padding: 6px 12px; font-size: 12px;">
+                    <i class="fas fa-times"></i> clear_filters()
+                </button>
+            </div>
+
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Category</label>
+                    <select id="filterCategory" multiple class="filter-select" onchange="applyFilters()">
+                        ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Type</label>
+                    <select id="filterType" multiple class="filter-select" onchange="applyFilters()">
+                        ${types.map(type => `<option value="${type}">${type}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Platform</label>
+                    <select id="filterPlatform" multiple class="filter-select" onchange="applyFilters()">
+                        ${platforms.map(plat => `<option value="${plat}">${plat}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Assignments</label>
+                    <select id="filterAssignments" class="filter-select" onchange="applyFilters()">
+                        <option value="">All</option>
+                        <option value="assigned">Assigned (> 0)</option>
+                        <option value="unassigned">Unassigned (0)</option>
+                    </select>
+                </div>
+            </div>
         </div>
+
         <table class="data-table">
             <thead>
                 <tr>
@@ -268,11 +314,11 @@ function displayAllPolicies(policies) {
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="policyTableBody">
     `;
 
     try {
-        allPolicies.forEach(policy => {
+        allPolicies.forEach((policy, index) => {
             const displayName = getPolicyDisplayName(policy);
             const category = categorizePolicyType(policy);
             const policyType = getPolicyType(policy);
@@ -282,7 +328,8 @@ function displayAllPolicies(policies) {
             const assignmentText = assignmentCount + ' group(s)';
 
             html += `
-                <tr onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
+                <tr data-index="${index}" data-category="${category}" data-type="${sourceType}" data-platform="${platform}" data-assignments="${assignmentCount}"
+                    onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
                     <td><strong>${displayName}</strong></td>
                     <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
                     <td>${sourceType}</td>
@@ -730,4 +777,94 @@ function updateActiveNav(index) {
             item.classList.remove('active');
         }
     });
+}
+
+// Filter functions
+function applyFilters() {
+    const categoryFilter = document.getElementById('filterCategory');
+    const typeFilter = document.getElementById('filterType');
+    const platformFilter = document.getElementById('filterPlatform');
+    const assignmentsFilter = document.getElementById('filterAssignments');
+
+    if (!categoryFilter || !typeFilter || !platformFilter || !assignmentsFilter) {
+        return;
+    }
+
+    // Get selected values
+    const selectedCategories = Array.from(categoryFilter.selectedOptions).map(opt => opt.value);
+    const selectedTypes = Array.from(typeFilter.selectedOptions).map(opt => opt.value);
+    const selectedPlatforms = Array.from(platformFilter.selectedOptions).map(opt => opt.value);
+    const assignmentValue = assignmentsFilter.value;
+
+    // Get all table rows
+    const tbody = document.getElementById('policyTableBody');
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll('tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const category = row.getAttribute('data-category');
+        const type = row.getAttribute('data-type');
+        const platform = row.getAttribute('data-platform');
+        const assignments = parseInt(row.getAttribute('data-assignments'));
+
+        let showRow = true;
+
+        // Apply category filter
+        if (selectedCategories.length > 0 && !selectedCategories.includes(category)) {
+            showRow = false;
+        }
+
+        // Apply type filter
+        if (selectedTypes.length > 0 && !selectedTypes.includes(type)) {
+            showRow = false;
+        }
+
+        // Apply platform filter
+        if (selectedPlatforms.length > 0 && !selectedPlatforms.includes(platform)) {
+            showRow = false;
+        }
+
+        // Apply assignments filter
+        if (assignmentValue === 'assigned' && assignments === 0) {
+            showRow = false;
+        } else if (assignmentValue === 'unassigned' && assignments > 0) {
+            showRow = false;
+        }
+
+        // Show/hide row
+        row.style.display = showRow ? '' : 'none';
+        if (showRow) visibleCount++;
+    });
+
+    // Update count
+    const filteredCountEl = document.getElementById('filteredCount');
+    if (filteredCountEl) {
+        filteredCountEl.textContent = visibleCount;
+    }
+}
+
+function clearAllFilters() {
+    const categoryFilter = document.getElementById('filterCategory');
+    const typeFilter = document.getElementById('filterType');
+    const platformFilter = document.getElementById('filterPlatform');
+    const assignmentsFilter = document.getElementById('filterAssignments');
+
+    // Clear all selections
+    if (categoryFilter) {
+        Array.from(categoryFilter.options).forEach(opt => opt.selected = false);
+    }
+    if (typeFilter) {
+        Array.from(typeFilter.options).forEach(opt => opt.selected = false);
+    }
+    if (platformFilter) {
+        Array.from(platformFilter.options).forEach(opt => opt.selected = false);
+    }
+    if (assignmentsFilter) {
+        assignmentsFilter.value = '';
+    }
+
+    // Reapply filters (which will show all)
+    applyFilters();
 }
