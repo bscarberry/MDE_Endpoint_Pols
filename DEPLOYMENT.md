@@ -318,10 +318,36 @@ https://defender-xdr-manager.azurewebsites.net
 
 ### Caching
 
-The app currently doesn't implement caching. For production, consider:
-- Redis for session caching
-- In-memory caching for API responses (with TTL)
-- CDN for static assets
+The application includes **built-in in-memory caching** powered by Flask-Caching:
+
+**Default Cache Configuration:**
+- Policy data: **10-minute TTL** (timeout=600)
+- Device data: **5-minute TTL** (timeout=300)
+- Cache type: `SimpleCache` (in-memory, per-worker process)
+
+**Benefits:**
+- First page load: Normal speed (building cache)
+- Subsequent loads: **Near-instant** (<1 second)
+- Automatic cache expiry after TTL
+- No external dependencies required
+
+**Manual Cache Management:**
+```bash
+# Clear cache via API endpoint
+curl -X POST http://localhost:5000/api/cache/clear
+
+# Or via browser console
+fetch('/api/cache/clear', { method: 'POST' })
+```
+
+**Advanced Caching (Optional):**
+
+For multi-instance deployments or shared caching across workers, consider:
+- **Redis**: For distributed caching across multiple servers
+  - Change `CACHE_TYPE` to `RedisCache` in `app.py`
+  - Requires Redis server/service
+- **Memcached**: Alternative to Redis
+- **CDN**: For static assets (CSS, JS, images)
 
 ### Scaling
 
@@ -416,8 +442,14 @@ server {
 **Performance issues:**
 - Increase worker/thread count
 - Check API rate limits
-- Enable caching
+- Clear cache if data seems stale: `POST /api/cache/clear`
 - Monitor server resources (CPU, memory)
+- Consider Redis for multi-instance deployments
+
+**Cache issues:**
+- Stale data: Clear cache with `POST /api/cache/clear`
+- Cache not working: Verify Flask-Caching is installed
+- Multi-instance issues: Each process has its own cache (use Redis for shared cache)
 
 ## Support
 

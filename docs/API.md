@@ -341,6 +341,38 @@ Common tables available for querying:
 
 ---
 
+### Clear Cache
+
+Clear all cached API responses to force fresh data retrieval.
+
+**Endpoint:** `POST /api/cache/clear`
+
+**Description:**
+The application caches policy and device data for improved performance. Use this endpoint to manually clear the cache when you need to see the most recent data immediately instead of waiting for the automatic cache expiry.
+
+**Cache Durations:**
+- Policy data (`/api/policies`): 10 minutes
+- Device data (`/api/devices`): 5 minutes
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Cache cleared successfully"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:5000/api/cache/clear
+```
+
+**Status Codes:**
+- `200 OK` - Cache cleared successfully
+- `500 Internal Server Error` - Failed to clear cache
+
+---
+
 ## Authentication
 
 The application uses Azure AD application credentials (Client ID and Secret) for authentication. All API calls to Microsoft services are authenticated using these credentials through the MSAL library.
@@ -357,7 +389,11 @@ Be aware of Microsoft API rate limits:
 - **Microsoft Graph API**: 10,000 requests per 10 minutes per app per tenant
 - **Microsoft Defender API**: Varies by endpoint, typically 45 requests per minute
 
-The application does not currently implement rate limiting - consider adding throttling for production use.
+The application implements **in-memory caching** to reduce API calls and improve performance:
+- Most API responses are cached for 5-10 minutes
+- Subsequent requests within the cache period are served from memory
+- This dramatically reduces the number of API calls to Microsoft services
+- Manual cache clearing is available via `POST /api/cache/clear`
 
 ## Error Codes
 

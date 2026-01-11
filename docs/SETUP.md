@@ -166,10 +166,11 @@ pip install -r requirements.txt
 
 This will install:
 - Flask (web framework)
+- Flask-Caching (in-memory caching for performance)
 - MSAL (Microsoft authentication)
 - Requests (HTTP library)
 - python-dotenv (environment variables)
-- Pandas (data processing)
+- Gunicorn & Waitress (production WSGI servers)
 
 ## Configuration
 
@@ -258,8 +259,15 @@ If successful, you'll see: `Configuration is valid!`
 When you first access the application:
 
 1. The dashboard will load
-2. Policy statistics will appear (may take a few seconds)
+2. Policy statistics will appear (may take 10-30 seconds on first load)
 3. Recent policies will be displayed
+4. Subsequent page loads will be much faster due to caching
+
+**Note on Performance:**
+- **First load**: Takes longer as data is fetched from Microsoft APIs and cached
+- **Subsequent loads**: Near-instant (<1 second) as data is served from cache
+- **Cache duration**: 10 minutes for policies, 5 minutes for devices
+- **Manual refresh**: Use `POST /api/cache/clear` to force fresh data
 
 If you see an error, check the [Troubleshooting](#troubleshooting) section.
 
@@ -449,6 +457,26 @@ python app.py
 2. **Missing Defender license**
    - Ensure you have Defender for Endpoint licenses
    - Verify Defender is properly configured
+
+### Issue: Seeing stale data or changes not appearing
+
+**Solution:**
+
+The application caches data for performance. If you need to see fresh data immediately:
+
+1. **Manual cache clear**:
+   ```bash
+   curl -X POST http://localhost:5000/api/cache/clear
+   ```
+
+2. **Wait for automatic expiry**:
+   - Policy data expires after 10 minutes
+   - Device data expires after 5 minutes
+
+3. **Browser console**:
+   ```javascript
+   fetch('/api/cache/clear', { method: 'POST' }).then(r => r.json()).then(console.log)
+   ```
 
 ### Getting Help
 

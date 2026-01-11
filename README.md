@@ -32,6 +32,12 @@ A comprehensive web-based application for managing and monitoring Microsoft Defe
 - **Advanced Hunting**: Run custom KQL queries for advanced threat hunting
 - **Real-time Data**: Access up-to-date information from Microsoft APIs
 
+### Performance
+- **In-Memory Caching**: 10-minute cache for policy data provides near-instant page loads
+- **Optimized API Calls**: Reduced API overhead with intelligent caching strategy
+- **Manual Cache Refresh**: Force cache refresh when immediate updates are needed
+- **Production WSGI Servers**: Gunicorn (Linux/Mac) and Waitress (Windows) for optimal performance
+
 ### Modern UI
 - **Terminal/Hacker Theme**: Professional terminal-style interface with JetBrains Mono font
 - **Responsive Design**: Works on desktop and tablet devices
@@ -284,6 +290,23 @@ If you encounter authentication errors:
 - Verify your account has access to view policies in Intune
 - Check that policies exist in your tenant
 - Ensure API permissions include read access
+
+### Cache-Related Issues
+
+If you're seeing stale data or recent policy changes aren't appearing:
+
+- **Cache Duration**: Policy data is cached for 10 minutes by default
+- **Manual Refresh**: Clear the cache using `POST /api/cache/clear`
+- **Automatic Expiry**: Cache automatically refreshes after the timeout period
+- **Per-Process**: Each worker process has its own cache (in-memory)
+
+```bash
+# Clear cache via curl
+curl -X POST http://localhost:5000/api/cache/clear
+
+# Or via browser console
+fetch('/api/cache/clear', { method: 'POST' }).then(r => r.json()).then(console.log)
+```
 
 ## 📚 Additional Documentation
 
