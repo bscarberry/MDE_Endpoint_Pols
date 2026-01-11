@@ -45,17 +45,12 @@ A comprehensive web-based application for managing and monitoring Microsoft Defe
 
 📘 **See [DEPLOYMENT.md](DEPLOYMENT.md) for complete production deployment instructions**, including:
 - Production server setup (Gunicorn/Waitress)
-- Cloud deployment guides (Heroku, Azure App Service, Docker)
+- Local deployment (Windows/Linux)
+- Azure App Service deployment
+- Docker containerized deployment
 - Security configuration and SSL/TLS setup
 - Performance optimization and scaling
-- Nginx reverse proxy configuration
 - Environment variable management
-
-☁️ **Using Cloudflare?** See [CLOUDFLARE.md](CLOUDFLARE.md) for deployment options with Cloudflare DNS/CDN:
-- Railway + Cloudflare (Recommended)
-- Render + Cloudflare
-- Fly.io + Cloudflare
-- Why Cloudflare Pages won't work (and alternatives)
 
 **Quick Start for Production:**
 ```bash
@@ -272,8 +267,7 @@ If you encounter authentication errors:
 
 ## 📚 Additional Documentation
 
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide (Heroku, Azure, Docker, cloud platforms)
-- **[CLOUDFLARE.md](CLOUDFLARE.md)** - Cloudflare deployment options (Railway, Render, Fly.io + Cloudflare)
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide (Windows/Linux, Azure App Service, Docker)
 - [API Documentation](docs/API.md) - Detailed API endpoint documentation
 - [Setup Guide](docs/SETUP.md) - Step-by-step setup instructions
 

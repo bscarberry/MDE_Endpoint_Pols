@@ -1,12 +1,12 @@
 # Production Deployment Guide
 
-This guide explains how to deploy the Defender XDR Endpoint Policy Manager to production.
+This guide explains how to deploy the Defender XDR Endpoint Policy Manager to production on Windows, Linux, and Azure App Service.
 
 ## Prerequisites
 
 - Python 3.8 or higher
 - Azure AD App Registration with appropriate permissions
-- Production server (Linux, Windows, or cloud platform)
+- Production server (Windows, Linux, or Azure App Service)
 
 ## Quick Start
 
@@ -87,54 +87,232 @@ waitress-serve --host=0.0.0.0 --port=5000 --threads=8 wsgi:app
 - Threads: 8 (adjust based on expected load)
 - Connection limit: Auto-configured
 
-## Cloud Deployment
+## Deployment Options
 
-### Heroku
+### Option 1: Local Windows Server
 
-1. Create a new Heroku app:
+**Using Waitress (recommended for Windows):**
+
+1. Install dependencies:
 ```bash
-heroku create your-app-name
+pip install -r requirements.txt
 ```
 
-2. Set environment variables:
+2. Configure `.env` file with your credentials
+
+3. Start the production server:
 ```bash
-heroku config:set TENANT_ID=your-tenant-id
-heroku config:set CLIENT_ID=your-client-id
-heroku config:set CLIENT_SECRET=your-client-secret
-heroku config:set FLASK_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+start_production.bat
 ```
 
-3. Deploy:
+**Manual start:**
 ```bash
-git push heroku main
+waitress-serve --host=0.0.0.0 --port=5000 --threads=8 wsgi:app
 ```
 
-The `Procfile` is already configured for Heroku.
+**Run as Windows Service:**
 
-### Docker
+Create a `nssm` service to run the app as a Windows service:
+```bash
+# Install NSSM (Non-Sucking Service Manager)
+# Download from https://nssm.cc/
 
-Build and run with Docker:
+# Create service
+nssm install DefenderXDRManager "C:\Python\python.exe" "C:\path\to\app\start_production.bat"
+nssm set DefenderXDRManager AppDirectory "C:\path\to\app"
+nssm start DefenderXDRManager
+```
+
+### Option 2: Local Linux Server
+
+**Using Gunicorn (recommended for Linux):**
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Configure `.env` file with your credentials
+
+3. Start the production server:
+```bash
+chmod +x start_production.sh
+./start_production.sh
+```
+
+**Manual start:**
+```bash
+gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 --timeout 120 wsgi:app
+```
+
+**Run as systemd service:**
+
+Create `/etc/systemd/system/defender-xdr.service`:
+```ini
+[Unit]
+Description=Defender XDR Endpoint Policy Manager
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/defender-xdr-manager
+Environment="PATH=/opt/defender-xdr-manager/venv/bin"
+ExecStart=/opt/defender-xdr-manager/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 --timeout 120 wsgi:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl enable defender-xdr
+sudo systemctl start defender-xdr
+sudo systemctl status defender-xdr
+```
+
+### Option 3: Docker Container
+
+**Build and run:**
 
 ```bash
+# Build image
 docker build -t defender-xdr-manager .
-docker run -p 5000:5000 --env-file .env defender-xdr-manager
+
+# Run with environment file
+docker run -d -p 5000:8080 --env-file .env --name defender-xdr defender-xdr-manager
+
+# Or set environment variables directly
+docker run -d -p 5000:8080 \
+  -e TENANT_ID=your-tenant-id \
+  -e CLIENT_ID=your-client-id \
+  -e CLIENT_SECRET=your-client-secret \
+  -e FLASK_SECRET_KEY=your-secret-key \
+  --name defender-xdr \
+  defender-xdr-manager
 ```
 
-### Cloudflare Workers/Pages
+**Using Docker Compose:**
 
-For Cloudflare deployment, you'll need to adapt the Flask app to run as a Cloudflare Worker or use Cloudflare Pages Functions. Consider using a Python WSGI adapter for Cloudflare.
+Create `docker-compose.yml`:
+```yaml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "5000:8080"
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
 
-### Azure App Service
+Run:
+```bash
+docker-compose up -d
+```
 
-1. Create an Azure App Service (Python 3.x)
-2. Configure application settings (environment variables)
-3. Deploy using:
-   - Azure CLI
-   - GitHub Actions
-   - VS Code extension
-   - ZIP deployment
+### Option 4: Azure App Service
 
-Startup command: `gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 wsgi:app`
+**Deploy using Azure CLI:**
+
+1. **Create Resource Group and App Service Plan:**
+```bash
+# Login to Azure
+az login
+
+# Create resource group
+az group create --name defender-xdr-rg --location eastus
+
+# Create App Service Plan (Linux)
+az appservice plan create \
+  --name defender-xdr-plan \
+  --resource-group defender-xdr-rg \
+  --is-linux \
+  --sku B1
+
+# Create Web App
+az webapp create \
+  --resource-group defender-xdr-rg \
+  --plan defender-xdr-plan \
+  --name defender-xdr-manager \
+  --runtime "PYTHON:3.11"
+```
+
+2. **Configure Application Settings:**
+```bash
+az webapp config appsettings set \
+  --resource-group defender-xdr-rg \
+  --name defender-xdr-manager \
+  --settings \
+    TENANT_ID="your-tenant-id" \
+    CLIENT_ID="your-client-id" \
+    CLIENT_SECRET="your-client-secret" \
+    FLASK_SECRET_KEY="your-secret-key" \
+    FLASK_ENV="production" \
+    FLASK_DEBUG="False" \
+    SCM_DO_BUILD_DURING_DEPLOYMENT="true"
+```
+
+3. **Configure Startup Command:**
+```bash
+az webapp config set \
+  --resource-group defender-xdr-rg \
+  --name defender-xdr-manager \
+  --startup-file "gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 wsgi:app"
+```
+
+4. **Deploy from local Git or GitHub:**
+
+**Local Git:**
+```bash
+# Get deployment credentials
+az webapp deployment user set --user-name <username> --password <password>
+
+# Get Git URL
+az webapp deployment source config-local-git \
+  --name defender-xdr-manager \
+  --resource-group defender-xdr-rg
+
+# Add remote and push
+git remote add azure <deployment-url>
+git push azure main
+```
+
+**GitHub Actions:**
+```bash
+# Enable GitHub Actions deployment
+az webapp deployment github-actions add \
+  --resource-group defender-xdr-rg \
+  --name defender-xdr-manager \
+  --repo "yourusername/repo" \
+  --branch main \
+  --login-with-github
+```
+
+5. **Access your app:**
+```
+https://defender-xdr-manager.azurewebsites.net
+```
+
+**Deploy using Azure Portal:**
+
+1. Go to Azure Portal → Create a resource → Web App
+2. Configure:
+   - Name: defender-xdr-manager
+   - Runtime: Python 3.11
+   - Region: Choose closest to you
+   - Pricing Plan: Basic B1 or higher
+3. After creation, go to Configuration → Application Settings
+4. Add environment variables
+5. Go to Deployment Center → Choose deployment source (GitHub/Local Git/ZIP)
+6. Deploy your code
 
 ## Performance Optimization
 
@@ -184,8 +362,8 @@ The production server (`wsgi.py`) adds these security headers:
 
 **SSL/TLS:**
 - Always use HTTPS in production
-- Use a reverse proxy (nginx, Apache) with SSL termination
-- Or use cloud provider SSL (Cloudflare, AWS ALB, Azure App Gateway)
+- Use a reverse proxy (nginx, Apache, IIS) with SSL termination
+- Or use cloud provider SSL (Azure App Gateway, Azure Front Door)
 
 **Firewall:**
 - Restrict access to specific IP ranges if possible
@@ -193,8 +371,9 @@ The production server (`wsgi.py`) adds these security headers:
 
 **Secrets Management:**
 - Never commit `.env` file to Git
-- Use secret management services (Azure Key Vault, AWS Secrets Manager)
+- Use Azure Key Vault for production secrets
 - Rotate client secrets regularly
+- Use managed identities when deploying to Azure
 
 ## Reverse Proxy Setup
 
