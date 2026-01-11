@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+DEPLOYMENT.md
+CLOUDFLARE.md
+docs/
+
+# CI/CD
+.github/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log
+*.pid
+*.seed
+*.pid.lock

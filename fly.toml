@@ -1,0 +1,41 @@
+# Fly.io configuration for Defender XDR Endpoint Policy Manager
+
+app = "defender-xdr-manager"
+primary_region = "iad"  # Change to your preferred region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  FLASK_ENV = "production"
+  FLASK_DEBUG = "false"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[http_service.concurrency]
+  type = "requests"
+  hard_limit = 250
+  soft_limit = 200
+
+[[http_service.checks]]
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/api/health"
+  protocol = "http"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# To set secrets:
+# fly secrets set TENANT_ID=xxx CLIENT_ID=xxx CLIENT_SECRET=xxx FLASK_SECRET_KEY=xxx
