@@ -33,10 +33,32 @@ A comprehensive web-based application for managing and monitoring Microsoft Defe
 - **Real-time Data**: Access up-to-date information from Microsoft APIs
 
 ### Modern UI
-- **Dark Theme**: Professional dark-themed interface matching Microsoft's design language
+- **Terminal/Hacker Theme**: Professional terminal-style interface with JetBrains Mono font
 - **Responsive Design**: Works on desktop and tablet devices
-- **Intuitive Navigation**: Easy-to-use sidebar navigation and search functionality
+- **Intuitive Navigation**: Easy-to-use sidebar navigation with function-style buttons
 - **Interactive Dashboard**: Visual stats and quick access to recent policies
+- **Multi-Column Filtering**: Filter policies by category, type, platform, and assignments
+
+## 🏭 Production Deployment
+
+**Ready for production?** This application is production-ready with proper WSGI server configuration.
+
+📘 **See [DEPLOYMENT.md](DEPLOYMENT.md) for complete production deployment instructions**, including:
+- Production server setup (Gunicorn/Waitress)
+- Cloud deployment guides (Heroku, Azure App Service, Docker)
+- Security configuration and SSL/TLS setup
+- Performance optimization and scaling
+- Nginx reverse proxy configuration
+- Environment variable management
+
+**Quick Start for Production:**
+```bash
+# Linux/Mac
+./start_production.sh
+
+# Windows
+start_production.bat
+```
 
 ## 📋 Prerequisites
 
@@ -244,6 +266,7 @@ If you encounter authentication errors:
 
 ## 📚 Additional Documentation
 
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide (Heroku, Azure, Docker, cloud platforms)
 - [API Documentation](docs/API.md) - Detailed API endpoint documentation
 - [Setup Guide](docs/SETUP.md) - Step-by-step setup instructions
 
