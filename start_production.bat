@@ -14,4 +14,4 @@ REM Set production environment
 set FLASK_ENV=production
 
 REM Start Waitress server
-waitress-serve --host=0.0.0.0 --port=5000 --threads=8 --call wsgi:app
+waitress-serve --host=0.0.0.0 --port=5000 --threads=8 wsgi:app
