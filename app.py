@@ -2,6 +2,7 @@
 Defender XDR Endpoint Policy Manager - Web Application
 """
 from flask import Flask, render_template, request, jsonify
+from flask_caching import Cache
 from config import Config
 from modules.policy_manager import PolicyManager
 import os
@@ -9,6 +10,11 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
+
+# Configure in-memory caching
+app.config['CACHE_TYPE'] = 'SimpleCache'  # In-memory cache
+app.config['CACHE_DEFAULT_TIMEOUT'] = 600  # 10 minutes default
+cache = Cache(app)
 
 # Initialize Policy Manager
 policy_manager = None
@@ -46,6 +52,7 @@ def health_check():
 
 
 @app.route('/api/policies')
+@cache.cached(timeout=600)  # Cache for 10 minutes
 def get_policies():
     """Get all endpoint policies"""
     try:
@@ -145,12 +152,29 @@ def run_query():
 
 
 @app.route('/api/devices')
+@cache.cached(timeout=300)  # Cache for 5 minutes
 def get_devices():
     """Get all managed devices"""
     try:
         pm = get_policy_manager()
         result = pm.get_managed_devices()
         return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/cache/clear', methods=['POST'])
+def clear_cache():
+    """Clear all cached data"""
+    try:
+        cache.clear()
+        return jsonify({
+            'success': True,
+            'message': 'Cache cleared successfully'
+        })
     except Exception as e:
         return jsonify({
             'success': False,
