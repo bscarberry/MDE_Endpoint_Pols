@@ -135,13 +135,33 @@ PORT=5000
 
 ## 🚀 Usage
 
-### Running the Application
+### Development Mode
+
+For local development and testing:
 
 ```bash
 python app.py
 ```
 
-The application will start on `http://localhost:5000` (or the port you configured).
+The application will start on `http://localhost:5000` (or the port you configured) using Flask's built-in development server.
+
+⚠️ **Warning**: The Flask development server is not suitable for production use. It's single-threaded and lacks security features required for production environments.
+
+### Production Mode
+
+For production deployments, use the production-ready WSGI servers:
+
+**Linux/Mac:**
+```bash
+./start_production.sh
+```
+
+**Windows:**
+```bash
+start_production.bat
+```
+
+📘 **For complete production deployment instructions** (including Azure App Service, Docker, systemd services, Windows services, SSL/TLS setup, and performance optimization), see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ### Accessing the Web Interface
 
