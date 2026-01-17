@@ -48,6 +48,21 @@
                     <span>advanced_hunting</span>
                 </a>
             </nav>
+
+            <!-- User Info -->
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <div class="user-details">
+                        <span class="user-name">{{ user.name if user else 'User' }}</span>
+                        <span class="user-email">{{ user.username if user else '' }}</span>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn" title="Sign out">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>logout()</span>
+                </a>
+            </div>
         </aside>
 
         <!-- Main Content -->

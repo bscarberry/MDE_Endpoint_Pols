@@ -1,23 +1,33 @@
 """
 Defender XDR Endpoint Policy Manager - Web Application
 """
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_caching import Cache
+from flask_session import Session
 from config import Config
 from modules.policy_manager import PolicyManager
+from modules.user_auth import UserAuthManager
+from functools import wraps
 import os
+import secrets
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
+app.config['SESSION_TYPE'] = Config.SESSION_TYPE
+app.config['PERMANENT_SESSION_LIFETIME'] = Config.PERMANENT_SESSION_LIFETIME
 
 # Configure in-memory caching
 app.config['CACHE_TYPE'] = 'SimpleCache'  # In-memory cache
 app.config['CACHE_DEFAULT_TIMEOUT'] = 600  # 10 minutes default
 cache = Cache(app)
 
-# Initialize Policy Manager
+# Initialize server-side session
+Session(app)
+
+# Initialize managers
 policy_manager = None
+user_auth_manager = UserAuthManager()
 
 
 def get_policy_manager():
@@ -28,10 +38,88 @@ def get_policy_manager():
     return policy_manager
 
 
+def login_required(f):
+    """Decorator to require authentication for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not user_auth_manager.is_authenticated():
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route('/')
+@login_required
 def index():
     """Home page - Dashboard"""
-    return render_template('index.html')
+    user = user_auth_manager.get_user_from_session()
+    return render_template('index.html', user=user)
+
+
+@app.route('/login')
+def login():
+    """Initiate user login"""
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(16)
+    session['state'] = state
+    session['next'] = request.args.get('next', url_for('index'))
+
+    # Get authorization URL
+    auth_url = user_auth_manager.get_login_url(state=state)
+    return redirect(auth_url)
+
+
+@app.route('/auth/callback')
+def auth_callback():
+    """Handle OAuth callback from Azure AD"""
+    # Verify state to prevent CSRF
+    if request.args.get('state') != session.get('state'):
+        return render_template('error.html', error='Invalid state parameter'), 400
+
+    # Check for errors in the callback
+    if 'error' in request.args:
+        return render_template('error.html',
+                             error=request.args.get('error'),
+                             error_description=request.args.get('error_description')), 400
+
+    # Exchange authorization code for tokens
+    code = request.args.get('code')
+    if not code:
+        return render_template('error.html', error='Missing authorization code'), 400
+
+    try:
+        result = user_auth_manager.get_token_from_code(code)
+
+        if 'error' in result:
+            return render_template('error.html',
+                                 error=result.get('error'),
+                                 error_description=result.get('error_description')), 400
+
+        # Store user information in session
+        session['user'] = {
+            'name': result.get('id_token_claims', {}).get('name'),
+            'username': result.get('id_token_claims', {}).get('preferred_username'),
+            'oid': result.get('id_token_claims', {}).get('oid')
+        }
+
+        # Redirect to original destination or home
+        next_url = session.pop('next', url_for('index'))
+        return redirect(next_url)
+
+    except Exception as e:
+        return render_template('error.html',
+                             error='Authentication failed',
+                             error_description=str(e)), 500
+
+
+@app.route('/logout')
+def logout():
+    """Log out the current user"""
+    user_auth_manager.logout()
+    logout_url = user_auth_manager.get_logout_url(
+        post_logout_redirect_uri=url_for('login', _external=True)
+    )
+    return redirect(logout_url)
 
 
 @app.route('/api/health')
@@ -52,6 +140,7 @@ def health_check():
 
 
 @app.route('/api/policies')
+@login_required
 @cache.cached(timeout=600)  # Cache for 10 minutes
 def get_policies():
     """Get all endpoint policies"""
@@ -67,6 +156,7 @@ def get_policies():
 
 
 @app.route('/api/policies/<policy_type>/<policy_id>')
+@login_required
 def get_policy_details(policy_type, policy_id):
     """Get details for a specific policy"""
     try:
@@ -81,6 +171,7 @@ def get_policy_details(policy_type, policy_id):
 
 
 @app.route('/api/search')
+@login_required
 def search_policies():
     """Search policies by term"""
     search_term = request.args.get('q', '')
@@ -102,6 +193,7 @@ def search_policies():
 
 
 @app.route('/api/defender/machines')
+@login_required
 def get_machines():
     """Get all machines from Defender XDR"""
     try:
@@ -116,6 +208,7 @@ def get_machines():
 
 
 @app.route('/api/defender/alerts')
+@login_required
 def get_alerts():
     """Get alerts from Defender XDR"""
     filters = request.args.get('filter')
@@ -131,6 +224,7 @@ def get_alerts():
 
 
 @app.route('/api/defender/query', methods=['POST'])
+@login_required
 def run_query():
     """Run advanced hunting query"""
     data = request.get_json()
@@ -152,6 +246,7 @@ def run_query():
 
 
 @app.route('/api/devices')
+@login_required
 @cache.cached(timeout=300)  # Cache for 5 minutes
 def get_devices():
     """Get all managed devices"""

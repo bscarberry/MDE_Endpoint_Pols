@@ -685,3 +685,77 @@ body {
 .border-glow {
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
 }
+
+/* User Authentication Styles */
+.sidebar-footer {
+    border-top: 1px solid var(--gray-800);
+    padding: 16px;
+    margin-top: auto;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background-color: rgba(31, 41, 55, 0.5);
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.user-info i {
+    font-size: 24px;
+    color: var(--terminal-green);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-email {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    color: #ef4444;
+    text-decoration: none;
+    font-size: 12px;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+}
+
+.logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+}
+
+.logout-btn i {
+    font-size: 14px;
+}

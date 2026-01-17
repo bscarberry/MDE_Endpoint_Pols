@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Error - Defender XDR Policy Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <p class="code-comment">/* authentication error */</p>
+                <h1 class="login-title"><i class="fas fa-exclamation-triangle" style="color: #ff5252;"></i></h1>
+                <p class="login-subtitle">authentication failed</p>
+            </div>
+
+            <div class="login-content">
+                <div class="error-box">
+                    <h3 class="error-title">
+                        <i class="fas fa-times-circle"></i>
+                        {{ error or 'Unknown error' }}
+                    </h3>
+                    {% if error_description %}
+                    <p class="error-description">{{ error_description }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="error-actions">
+                    <a href="{{ url_for('login') }}" class="btn-login">
+                        <i class="fas fa-redo"></i>
+                        try_again()
+                    </a>
+                </div>
+
+                <div class="login-info">
+                    <p class="code-comment">// Common issues:</p>
+                    <ul>
+                        <li>Account doesn't have required permissions</li>
+                        <li>Application not configured correctly</li>
+                        <li>Missing admin consent for API permissions</li>
+                        <li>Invalid redirect URI in Azure AD app</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="login-footer">
+                <p class="text-muted">Contact your administrator for access</p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bg-dark);
+            padding: 20px;
+        }
+
+        .login-box {
+            background: var(--bg-medium);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-title {
+            font-size: 3rem;
+            margin: 10px 0;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .login-content {
+            margin: 30px 0;
+        }
+
+        .error-box {
+            background: rgba(255, 82, 82, 0.1);
+            border-left: 4px solid #ff5252;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+        }
+
+        .error-title {
+            color: #ff5252;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            margin: 0 0 10px 0;
+        }
+
+        .error-title i {
+            margin-right: 10px;
+        }
+
+        .error-description {
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            margin: 10px 0 0 0;
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            margin: 20px 0;
+        }
+
+        .btn-login {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 15px 25px;
+            background: var(--accent-color);
+            color: var(--bg-dark);
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-login:hover {
+            background: #00e676;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 230, 118, 0.3);
+        }
+
+        .btn-login i {
+            margin-right: 10px;
+        }
+
+        .login-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--bg-dark);
+            border-radius: 6px;
+        }
+
+        .login-info ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+
+        .login-info li {
+            color: var(--text-secondary);
+            padding: 5px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .login-info li:before {
+            content: '⚠ ';
+            color: #ff5252;
+            margin-right: 5px;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .text-muted {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</body>
+</html>
