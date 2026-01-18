@@ -759,3 +759,23 @@ body {
 .logout-btn i {
     font-size: 14px;
 }
+
+/* Table Sorting Styles */
+.data-table thead th {
+    position: relative;
+    user-select: none;
+}
+
+.data-table thead th:hover {
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.sort-indicator {
+    font-size: 10px;
+    margin-left: 4px;
+    opacity: 0.7;
+}
+
+.data-table thead th[onclick] {
+    transition: background-color 0.2s ease;
+}

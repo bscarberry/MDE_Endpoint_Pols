@@ -252,8 +252,10 @@ function displayAllPolicies(policies) {
         return;
     }
 
-    // Store policies globally for filtering
+    // Store policies globally for filtering and sorting
     window.allPoliciesData = allPolicies;
+    window.currentSortColumn = null;
+    window.currentSortDirection = 'asc';
 
     // Extract unique values for filters
     const categories = [...new Set(allPolicies.map(p => categorizePolicyType(p)))].sort();
@@ -306,11 +308,24 @@ function displayAllPolicies(policies) {
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Policy Name</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Platform</th>
-                    <th>Assignments</th>
+                    <th onclick="sortTable('name')" style="cursor: pointer;">
+                        Policy Name <span id="sort-name" class="sort-indicator"></span>
+                    </th>
+                    <th onclick="sortTable('category')" style="cursor: pointer;">
+                        Category <span id="sort-category" class="sort-indicator"></span>
+                    </th>
+                    <th onclick="sortTable('type')" style="cursor: pointer;">
+                        Type <span id="sort-type" class="sort-indicator"></span>
+                    </th>
+                    <th onclick="sortTable('platform')" style="cursor: pointer;">
+                        Platform <span id="sort-platform" class="sort-indicator"></span>
+                    </th>
+                    <th onclick="sortTable('assignments')" style="cursor: pointer;">
+                        Assignments <span id="sort-assignments" class="sort-indicator"></span>
+                    </th>
+                    <th onclick="sortTable('created')" style="cursor: pointer;">
+                        Created <span id="sort-created" class="sort-indicator"></span>
+                    </th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -327,14 +342,26 @@ function displayAllPolicies(policies) {
             const assignmentCount = policy.assignmentCount !== undefined ? policy.assignmentCount : 0;
             const assignmentText = assignmentCount + ' group(s)';
 
+            // Format created date
+            const createdDate = policy.createdDateTime || policy.creationDate;
+            const createdText = createdDate ? new Date(createdDate).toLocaleDateString() : 'N/A';
+            const createdSort = createdDate ? new Date(createdDate).getTime() : 0;
+
             html += `
-                <tr data-index="${index}" data-category="${category}" data-type="${sourceType}" data-platform="${platform}" data-assignments="${assignmentCount}"
+                <tr data-index="${index}"
+                    data-category="${category}"
+                    data-type="${sourceType}"
+                    data-platform="${platform}"
+                    data-assignments="${assignmentCount}"
+                    data-name="${displayName.toLowerCase()}"
+                    data-created="${createdSort}"
                     onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
                     <td><strong>${displayName}</strong></td>
                     <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
                     <td>${sourceType}</td>
                     <td>${platform}</td>
                     <td>${assignmentText}</td>
+                    <td style="font-size: 12px; color: var(--text-secondary);">${createdText}</td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
                                 onclick="event.stopPropagation(); viewPolicyDetails('${policyType}', '${policy.id}')">
@@ -425,12 +452,37 @@ function getPolicyType(policy) {
 }
 
 function categorizePolicyType(policy) {
-    const name = getPolicyDisplayName(policy).toLowerCase();
+    // First check templateFamily for accurate categorization
+    if (policy.templateReference && policy.templateReference.templateFamily) {
+        const family = policy.templateReference.templateFamily.toLowerCase();
+        if (family.includes('antivirus') || family.includes('defender')) return 'Antivirus';
+        if (family.includes('firewall')) return 'Firewall';
+        if (family.includes('attacksurfacereduction') || family.includes('asr')) return 'Attack Surface Reduction';
+        if (family.includes('devicecontrol')) return 'Device Control';
+        if (family.includes('accountprotection')) return 'Account Protection';
+        if (family.includes('applicationcontrol')) return 'App Control';
+        if (family.includes('bitlocker') || family.includes('encryption')) return 'Encryption';
+        if (family.includes('edr') || family.includes('onboarding')) return 'EDR';
+    }
 
-    // Categorize based on policy name
+    // Check templateDisplayName
+    if (policy.templateReference && policy.templateReference.templateDisplayName) {
+        const displayName = policy.templateReference.templateDisplayName.toLowerCase();
+        if (displayName.includes('antivirus')) return 'Antivirus';
+        if (displayName.includes('firewall')) return 'Firewall';
+        if (displayName.includes('attack surface')) return 'Attack Surface Reduction';
+        if (displayName.includes('device control')) return 'Device Control';
+        if (displayName.includes('account protection')) return 'Account Protection';
+        if (displayName.includes('application control') || displayName.includes('app control')) return 'App Control';
+        if (displayName.includes('bitlocker') || displayName.includes('encryption')) return 'Encryption';
+        if (displayName.includes('edr') || displayName.includes('onboard')) return 'EDR';
+    }
+
+    // Fall back to policy name
+    const name = getPolicyDisplayName(policy).toLowerCase();
     if (name.includes('antivirus') || name.includes('defender') || name.includes('av -')) {
         return 'Antivirus';
-    } else if (name.includes('firewall')) {
+    } else if (name.includes('firewall') || name.includes('mdfw')) {
         return 'Firewall';
     } else if (name.includes('asr') || name.includes('attack surface')) {
         return 'Attack Surface Reduction';
@@ -867,4 +919,92 @@ function clearAllFilters() {
 
     // Reapply filters (which will show all)
     applyFilters();
+}
+
+// Table Sorting Function
+function sortTable(column) {
+    const tbody = document.getElementById('policyTableBody');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    // Determine sort direction
+    if (window.currentSortColumn === column) {
+        // Toggle direction if clicking same column
+        window.currentSortDirection = window.currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default to ascending
+        window.currentSortColumn = column;
+        window.currentSortDirection = 'asc';
+    }
+
+    // Sort rows
+    rows.sort((a, b) => {
+        let aVal, bVal;
+
+        switch(column) {
+            case 'name':
+                aVal = a.dataset.name || '';
+                bVal = b.dataset.name || '';
+                break;
+            case 'category':
+                aVal = a.dataset.category || '';
+                bVal = b.dataset.category || '';
+                break;
+            case 'type':
+                aVal = a.dataset.type || '';
+                bVal = b.dataset.type || '';
+                break;
+            case 'platform':
+                aVal = a.dataset.platform || '';
+                bVal = b.dataset.platform || '';
+                break;
+            case 'assignments':
+                aVal = parseInt(a.dataset.assignments) || 0;
+                bVal = parseInt(b.dataset.assignments) || 0;
+                break;
+            case 'created':
+                aVal = parseInt(a.dataset.created) || 0;
+                bVal = parseInt(b.dataset.created) || 0;
+                break;
+            default:
+                return 0;
+        }
+
+        // Compare values
+        if (column === 'assignments' || column === 'created') {
+            // Numeric comparison
+            return window.currentSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        } else {
+            // String comparison
+            if (aVal < bVal) return window.currentSortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return window.currentSortDirection === 'asc' ? 1 : -1;
+            return 0;
+        }
+    });
+
+    // Clear and re-append sorted rows
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+
+    // Update sort indicators
+    updateSortIndicators(column, window.currentSortDirection);
+}
+
+function updateSortIndicators(column, direction) {
+    // Clear all indicators
+    ['name', 'category', 'type', 'platform', 'assignments', 'created'].forEach(col => {
+        const indicator = document.getElementById(`sort-${col}`);
+        if (indicator) {
+            indicator.textContent = '';
+            indicator.style.color = '';
+        }
+    });
+
+    // Set active indicator
+    const activeIndicator = document.getElementById(`sort-${column}`);
+    if (activeIndicator) {
+        activeIndicator.textContent = direction === 'asc' ? ' ▲' : ' ▼';
+        activeIndicator.style.color = 'var(--accent-color)';
+    }
 }
