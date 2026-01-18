@@ -1,343 +1,223 @@
 # Defender XDR Endpoint Policy Manager
 
-A comprehensive web-based application for managing and monitoring Microsoft Defender XDR endpoint policies using Microsoft Graph API and Defender XDR API.
+A web-based application for managing and monitoring Microsoft Defender XDR endpoint policies with user authentication.
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![Flask](https://img.shields.io/badge/Flask-3.0.0-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
 
-## 🚀 Features
+## ✨ Features
 
-### Policy Management
-- **View All Endpoint Policies**: Access all types of endpoint policies from a single interface
-  - Device Compliance Policies
-  - Device Configuration Policies
-  - Endpoint Security Intents (Antivirus, Firewall, Attack Surface Reduction)
-  - Configuration Profiles (Settings Catalog)
-  - PowerShell Scripts
-  - Device Health Monitoring Scripts
+- **Policy Management**: View and search all endpoint policies (Compliance, Configuration, Security Intents, Scripts)
+- **Device Monitoring**: Track managed devices and Defender XDR machines
+- **Security Alerts**: Monitor security alerts from Defender XDR
+- **Advanced Hunting**: Run custom KQL queries for threat hunting
+- **User Authentication**: Microsoft Azure AD OAuth 2.0 login required
+- **Performance**: In-memory caching (10-min TTL) for fast page loads
+- **Modern UI**: Terminal-style theme with responsive design
 
-### Policy Details
-- **Comprehensive Information**: View detailed settings, configurations, and metadata
-- **Assignment Tracking**: See which groups and devices are assigned to each policy
-- **Settings Visualization**: Review policy settings in an easy-to-read format
+## 🚀 Quick Start (Localhost)
 
-### Device Management
-- **Managed Devices**: View all Intune-managed devices
-- **Defender Machines**: Access machine inventory from Defender XDR
-- **Compliance Status**: Monitor device compliance states
+### Prerequisites
 
-### Security Monitoring
-- **Security Alerts**: View and monitor security alerts from Defender XDR
-- **Advanced Hunting**: Run custom KQL queries for advanced threat hunting
-- **Real-time Data**: Access up-to-date information from Microsoft APIs
+- Python 3.8+
+- Azure AD App Registration
+- Microsoft 365 with Defender XDR and Intune
 
-### Performance
-- **In-Memory Caching**: 10-minute cache for policy data provides near-instant page loads
-- **Optimized API Calls**: Reduced API overhead with intelligent caching strategy
-- **Manual Cache Refresh**: Force cache refresh when immediate updates are needed
-- **Production WSGI Servers**: Gunicorn (Linux/Mac) and Waitress (Windows) for optimal performance
-
-### Modern UI
-- **Terminal/Hacker Theme**: Professional terminal-style interface with JetBrains Mono font
-- **Responsive Design**: Works on desktop and tablet devices
-- **Intuitive Navigation**: Easy-to-use sidebar navigation with function-style buttons
-- **Interactive Dashboard**: Visual stats and quick access to recent policies
-- **Multi-Column Filtering**: Filter policies by category, type, platform, and assignments
-
-## 🏭 Production Deployment
-
-**Ready for production?** This application is production-ready with proper WSGI server configuration.
-
-📘 **See [DEPLOYMENT.md](DEPLOYMENT.md) for complete production deployment instructions**, including:
-- Production server setup (Gunicorn/Waitress)
-- Local deployment (Windows/Linux)
-- Azure App Service deployment
-- Docker containerized deployment
-- Security configuration and SSL/TLS setup
-- Performance optimization and scaling
-- Environment variable management
-
-**Quick Start for Production:**
-```bash
-# Linux/Mac
-./start_production.sh
-
-# Windows
-start_production.bat
-```
-
-## 📋 Prerequisites
-
-- Python 3.8 or higher
-- Microsoft Azure AD Application Registration with appropriate permissions
-- Access to Microsoft 365 tenant with Defender XDR and Intune
-
-## 🔐 Required API Permissions
-
-### Microsoft Graph API Permissions
-Your Azure AD app registration needs the following **Application** permissions:
-
-**Required:**
-- `DeviceManagementConfiguration.Read.All` - Read device configurations
-- `DeviceManagementManagedDevices.Read.All` - Read managed devices
-- `DeviceManagementServiceConfig.Read.All` - Read service configuration
-- `Group.Read.All` - Read groups (for policy assignments)
-
-**Optional:**
-- `DeviceManagementScripts.Read.All` - Read PowerShell scripts and health monitoring scripts (if you want to view scripts)
-
-### Microsoft Defender API Permissions
-**Required:**
-- `AdvancedQuery.Read.All` - Run advanced hunting queries
-- `Machine.Read.All` - Read machine information
-- `Alert.Read.All` - Read security alerts
-
-## 📦 Installation
-
-### 1. Clone the Repository
+### Installation
 
 ```bash
+# Clone repository
 git clone https://github.com/yourusername/MDE_Endpoint_Pols.git
 cd MDE_Endpoint_Pols
-```
 
-### 2. Create Virtual Environment
-
-```bash
+# Create virtual environment
 python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or
+venv\Scripts\activate     # Windows
 
-# On Windows
-venv\Scripts\activate
-
-# On Linux/Mac
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 4. Configure Environment Variables
-
-Copy the example environment file and configure your credentials:
-
-```bash
+# Configure environment
 cp .env.example .env
+# Edit .env with your Azure AD credentials
 ```
 
-Edit `.env` file with your Azure AD application details:
+### Configuration
+
+Create `.env` file with your Azure AD app details:
 
 ```env
-TENANT_ID=your-tenant-id-here
-CLIENT_ID=your-client-id-here
-CLIENT_SECRET=your-client-secret-here
-FLASK_SECRET_KEY=generate-a-random-secret-key
-FLASK_ENV=development
-PORT=5000
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-client-id
+CLIENT_SECRET=your-client-secret
+FLASK_SECRET_KEY=your-random-secret-key
+REDIRECT_URI=http://localhost:5000/auth/callback
 ```
 
-## 🚀 Usage
+Generate secret key:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
-### Development Mode
+### Azure AD Setup
 
-For local development and testing:
+**1. App Registration Permissions:**
+
+Add these **Application** permissions to your Azure AD app:
+
+**Microsoft Graph:**
+- `DeviceManagementConfiguration.Read.All`
+- `DeviceManagementManagedDevices.Read.All`
+- `DeviceManagementServiceConfig.Read.All`
+- `Group.Read.All`
+
+**Microsoft Defender:**
+- `AdvancedQuery.Read.All`
+- `Machine.Read.All`
+- `Alert.Read.All`
+
+**User Authentication (Delegated):**
+- `User.Read`
+
+**2. Authentication Configuration:**
+
+In Azure Portal → App Registration → Authentication:
+- Add platform: **Web**
+- Redirect URI: `http://localhost:5000/auth/callback`
+- Enable: **ID tokens** ✅
+
+**3. Grant Admin Consent**
+
+Click "Grant admin consent" for all permissions.
+
+### Run Application
 
 ```bash
+# Development mode
 python app.py
+
+# Access at http://localhost:5000
 ```
 
-The application will start on `http://localhost:5000` (or the port you configured) using Flask's built-in development server.
+## 🌐 Production Deployment (Azure Web Apps)
 
-⚠️ **Warning**: The Flask development server is not suitable for production use. It's single-threaded and lacks security features required for production environments.
+Deploy to Azure Web Apps for production use.
 
-### Production Mode
+### Quick Deploy
 
-For production deployments, use the production-ready WSGI servers:
-
-**Linux/Mac:**
 ```bash
-./start_production.sh
+# Login to Azure
+az login
+
+# Create resources
+az group create --name defender-xdr-rg --location eastus
+
+az appservice plan create \
+  --name defender-xdr-plan \
+  --resource-group defender-xdr-rg \
+  --sku B1 \
+  --is-linux
+
+az webapp create \
+  --resource-group defender-xdr-rg \
+  --plan defender-xdr-plan \
+  --name your-app-name \
+  --runtime "PYTHON:3.11"
+
+# Configure settings
+az webapp config appsettings set \
+  --resource-group defender-xdr-rg \
+  --name your-app-name \
+  --settings \
+    TENANT_ID="your-tenant-id" \
+    CLIENT_ID="your-client-id" \
+    CLIENT_SECRET="your-client-secret" \
+    FLASK_SECRET_KEY="$(openssl rand -hex 32)" \
+    REDIRECT_URI="https://your-app-name.azurewebsites.net/auth/callback" \
+    PORT="8000" \
+    WEBSITES_PORT="8000"
+
+# Deploy code
+az webapp deployment source config-zip \
+  --resource-group defender-xdr-rg \
+  --name your-app-name \
+  --src deploy.zip
 ```
 
-**Windows:**
-```bash
-start_production.bat
-```
+**Update Azure AD redirect URI:**
+Add `https://your-app-name.azurewebsites.net/auth/callback` to your app registration.
 
-📘 **For complete production deployment instructions** (including Azure App Service, Docker, systemd services, Windows services, SSL/TLS setup, and performance optimization), see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+📘 **See [docs/AZURE_DEPLOYMENT.md](docs/AZURE_DEPLOYMENT.md) for complete deployment guide.**
 
-### Accessing the Web Interface
+## 📖 Documentation
 
-1. Open your web browser and navigate to `http://localhost:5000`
-2. The dashboard will load automatically showing policy statistics
-3. Use the sidebar to navigate between different sections:
-   - **Dashboard**: Overview and statistics
-   - **Endpoint Policies**: View all policies
-   - **Managed Devices**: Intune-managed devices
-   - **Defender Machines**: Defender XDR machine inventory
-   - **Security Alerts**: Active security alerts
-   - **Advanced Hunting**: Run KQL queries
-
-### Search Functionality
-
-Use the search bar at the top to quickly find policies by name or description. Press Enter to execute the search.
-
-### Advanced Hunting Queries
-
-Example KQL query to find devices with specific configurations:
-
-```kql
-DeviceInfo
-| where OSPlatform == "Windows10"
-| summarize by DeviceName, OSVersion
-| limit 100
-```
-
-## 📁 Project Structure
-
-```
-MDE_Endpoint_Pols/
-├── app.py                      # Main Flask application
-├── config.py                   # Configuration management
-├── requirements.txt            # Python dependencies
-├── .env.example               # Environment variables template
-├── .gitignore                 # Git ignore file
-├── modules/                   # Application modules
-│   ├── __init__.py
-│   ├── auth.py               # Azure AD authentication
-│   ├── graph_client.py       # Microsoft Graph API client
-│   ├── defender_client.py    # Defender XDR API client
-│   └── policy_manager.py     # Policy management logic
-├── templates/                 # HTML templates
-│   ├── base.html             # Base template
-│   └── index.html            # Dashboard page
-├── static/                    # Static files
-│   ├── css/
-│   │   └── style.css         # Application styles
-│   └── js/
-│       └── app.js            # Client-side JavaScript
-└── docs/                      # Documentation
-    ├── API.md                # API documentation
-    └── SETUP.md              # Setup guide
-```
+- **[docs/AZURE_DEPLOYMENT.md](docs/AZURE_DEPLOYMENT.md)** - Azure Web Apps deployment guide
+- **[docs/SETUP.md](docs/SETUP.md)** - Detailed setup instructions
+- **[docs/API.md](docs/API.md)** - API endpoint documentation
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - General deployment options (Docker, systemd, etc.)
 
 ## 🔧 Configuration
 
-### Azure AD App Registration
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TENANT_ID` | Azure AD Tenant ID | Required |
+| `CLIENT_ID` | Azure AD Application ID | Required |
+| `CLIENT_SECRET` | Azure AD Client Secret | Required |
+| `FLASK_SECRET_KEY` | Session encryption key | Required |
+| `REDIRECT_URI` | OAuth callback URL | `http://localhost:5000/auth/callback` |
+| `PORT` | Application port | `5000` |
+| `FLASK_ENV` | Environment | `production` |
 
-1. Go to [Azure Portal](https://portal.azure.com)
-2. Navigate to **Azure Active Directory** > **App registrations**
-3. Click **New registration**
-4. Configure:
-   - Name: `Defender XDR Policy Manager`
-   - Supported account types: `Accounts in this organizational directory only`
-   - Redirect URI: Not required for this application
-5. After creation, note the **Application (client) ID** and **Directory (tenant) ID**
-6. Create a client secret:
-   - Go to **Certificates & secrets**
-   - Click **New client secret**
-   - Add description and select expiration
-   - Copy the secret **value** (not the ID)
-7. Configure API permissions as listed in the Prerequisites section
-8. Click **Grant admin consent** for your organization
+## 🛠️ Troubleshooting
 
-### Environment Variables
+### Authentication fails
+- Verify Azure AD credentials in `.env`
+- Check redirect URI matches exactly (including http/https)
+- Ensure all API permissions granted with admin consent
+- Verify client secret hasn't expired
 
-All configuration is done through environment variables in the `.env` file:
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `TENANT_ID` | Azure AD Tenant ID | Yes |
-| `CLIENT_ID` | Azure AD Application ID | Yes |
-| `CLIENT_SECRET` | Azure AD Client Secret | Yes |
-| `FLASK_SECRET_KEY` | Flask session secret key | Yes |
-| `FLASK_ENV` | Environment (development/production) | No |
-| `FLASK_DEBUG` | Enable debug mode | No |
-| `PORT` | Application port | No |
-
-## 🔒 Security Considerations
-
-- **Never commit** the `.env` file to version control
-- Store credentials securely (consider Azure Key Vault for production)
-- Use HTTPS in production environments
-- Regularly rotate client secrets
-- Follow principle of least privilege for API permissions
-- Review and audit access logs regularly
-
-## 🐛 Troubleshooting
-
-### Authentication Errors
-
-If you encounter authentication errors:
-
-1. Verify your `TENANT_ID`, `CLIENT_ID`, and `CLIENT_SECRET` are correct
-2. Ensure API permissions are granted and admin consent is provided
-3. Check that the client secret hasn't expired
-4. Verify your Azure AD app has the required permissions
-
-### API Request Failures
-
-- Check your internet connection
-- Verify the Microsoft services are operational
-- Ensure your token hasn't expired (tokens are auto-refreshed)
-- Review API rate limits
-
-### Missing Policies
-
-- Verify your account has access to view policies in Intune
-- Check that policies exist in your tenant
-- Ensure API permissions include read access
-
-### Cache-Related Issues
-
-If you're seeing stale data or recent policy changes aren't appearing:
-
-- **Cache Duration**: Policy data is cached for 10 minutes by default
-- **Manual Refresh**: Clear the cache using `POST /api/cache/clear`
-- **Automatic Expiry**: Cache automatically refreshes after the timeout period
-- **Per-Process**: Each worker process has its own cache (in-memory)
-
+### Stale data
 ```bash
-# Clear cache via curl
+# Clear cache
 curl -X POST http://localhost:5000/api/cache/clear
-
-# Or via browser console
-fetch('/api/cache/clear', { method: 'POST' }).then(r => r.json()).then(console.log)
 ```
 
-## 📚 Additional Documentation
+### Missing policies
+- Verify Intune administrator permissions
+- Check API permissions include required scopes
+- Ensure policies exist in your tenant
 
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide (Windows/Linux, Azure App Service, Docker)
-- [API Documentation](docs/API.md) - Detailed API endpoint documentation
-- [Setup Guide](docs/SETUP.md) - Step-by-step setup instructions
+## 🔒 Security
 
-## 🤝 Contributing
+- Never commit `.env` file to version control
+- Use Azure Key Vault for production secrets
+- Rotate client secrets regularly
+- Enable HTTPS in production
+- Review access logs periodically
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## 📦 Requirements
+
+See `requirements.txt`:
+- Flask 3.0+
+- Flask-Caching (performance)
+- Flask-Session (server-side sessions)
+- MSAL (Microsoft authentication)
+- Gunicorn (production server)
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see LICENSE file for details.
 
-## 🆘 Support
+## 🙏 Credits
 
-For issues and questions:
-- Open an issue on GitHub
-- Check the documentation in the `docs/` folder
-- Review Microsoft's API documentation:
-  - [Microsoft Graph API](https://docs.microsoft.com/en-us/graph/)
-  - [Microsoft Defender XDR API](https://docs.microsoft.com/en-us/microsoft-365/security/defender-endpoint/api/)
-
-## 🙏 Acknowledgments
-
+Built with:
 - Microsoft Graph API
 - Microsoft Defender XDR API
 - Flask Framework
-- Font Awesome Icons
+- MSAL Python
 
 ---
 
-**Note**: This application requires appropriate Microsoft 365 licenses and permissions. Ensure you have the necessary licenses before deployment.
+**Note**: Requires Microsoft 365 licenses with Defender XDR and Intune.
