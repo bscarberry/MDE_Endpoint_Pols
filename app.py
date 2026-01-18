@@ -27,7 +27,6 @@ Session(app)
 
 # Initialize managers
 policy_manager = None
-user_auth_manager = UserAuthManager()
 
 
 def get_policy_manager():
@@ -38,11 +37,19 @@ def get_policy_manager():
     return policy_manager
 
 
+def get_user_auth_manager():
+    """Get user auth manager with dynamic redirect URI based on request"""
+    # Build redirect URI dynamically from the request
+    redirect_uri = url_for('auth_callback', _external=True)
+    return UserAuthManager(redirect_uri=redirect_uri)
+
+
 def login_required(f):
     """Decorator to require authentication for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not user_auth_manager.is_authenticated():
+        user_auth = get_user_auth_manager()
+        if not user_auth.is_authenticated():
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
@@ -52,7 +59,8 @@ def login_required(f):
 @login_required
 def index():
     """Home page - Dashboard"""
-    user = user_auth_manager.get_user_from_session()
+    user_auth = get_user_auth_manager()
+    user = user_auth.get_user_from_session()
     return render_template('index.html', user=user)
 
 
@@ -64,8 +72,9 @@ def login():
     session['state'] = state
     session['next'] = request.args.get('next', url_for('index'))
 
-    # Get authorization URL
-    auth_url = user_auth_manager.get_login_url(state=state)
+    # Get authorization URL with dynamic redirect URI
+    user_auth = get_user_auth_manager()
+    auth_url = user_auth.get_login_url(state=state)
     return redirect(auth_url)
 
 
@@ -88,7 +97,8 @@ def auth_callback():
         return render_template('error.html', error='Missing authorization code'), 400
 
     try:
-        result = user_auth_manager.get_token_from_code(code)
+        user_auth = get_user_auth_manager()
+        result = user_auth.get_token_from_code(code)
 
         if 'error' in result:
             return render_template('error.html',
@@ -115,8 +125,9 @@ def auth_callback():
 @app.route('/logout')
 def logout():
     """Log out the current user"""
-    user_auth_manager.logout()
-    logout_url = user_auth_manager.get_logout_url(
+    user_auth = get_user_auth_manager()
+    user_auth.logout()
+    logout_url = user_auth.get_logout_url(
         post_logout_redirect_uri=url_for('login', _external=True)
     )
     return redirect(logout_url)

@@ -9,12 +9,12 @@ from config import Config
 class UserAuthManager:
     """Handles user authentication using OAuth 2.0 authorization code flow"""
 
-    def __init__(self):
+    def __init__(self, redirect_uri=None):
         """Initialize the user authentication manager"""
         self.client_id = Config.CLIENT_ID
         self.client_secret = Config.CLIENT_SECRET
         self.authority = Config.AUTHORITY
-        self.redirect_uri = Config.REDIRECT_URI
+        self.redirect_uri = redirect_uri or Config.REDIRECT_URI
         self.scope = Config.USER_SCOPE
 
     def _build_msal_app(self, cache=None):
