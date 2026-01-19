@@ -4,6 +4,7 @@ Defender XDR Endpoint Policy Manager - Web Application
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_caching import Cache
 from flask_session import Session
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from modules.policy_manager import PolicyManager
 from modules.user_auth import UserAuthManager
@@ -16,6 +17,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 app.config['SESSION_TYPE'] = Config.SESSION_TYPE
 app.config['PERMANENT_SESSION_LIFETIME'] = Config.PERMANENT_SESSION_LIFETIME
+
+# Trust proxy headers from Azure Web Apps (for HTTPS detection)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Configure in-memory caching
 app.config['CACHE_TYPE'] = 'SimpleCache'  # In-memory cache
