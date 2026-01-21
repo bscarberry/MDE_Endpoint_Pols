@@ -71,6 +71,58 @@ class GraphClient:
             else:
                 raise Exception(f"API request failed: {e.response.status_code} - {e.response.text}")
 
+    def _batch_request(self, requests_data):
+        """
+        Make batch request to Graph API to fetch multiple resources in a single call
+
+        Args:
+            requests_data: List of request dictionaries with 'id', 'method', and 'url'
+
+        Returns:
+            Dictionary mapping request IDs to response bodies
+        """
+        if not requests_data:
+            return {}
+
+        # Microsoft Graph batch API supports up to 20 requests per batch
+        # Split into chunks if needed
+        batch_size = 20
+        all_responses = {}
+
+        for i in range(0, len(requests_data), batch_size):
+            batch = requests_data[i:i+batch_size]
+
+            batch_payload = {
+                "requests": batch
+            }
+
+            try:
+                url = f"{self.base_url}/$batch"
+                response = requests.post(
+                    url=url,
+                    headers=self.headers,
+                    json=batch_payload
+                )
+                response.raise_for_status()
+                batch_response = response.json()
+
+                # Map responses by ID
+                for resp in batch_response.get('responses', []):
+                    req_id = resp.get('id')
+                    if resp.get('status') == 200:
+                        all_responses[req_id] = resp.get('body')
+                    else:
+                        # Request failed, set to None
+                        all_responses[req_id] = None
+
+            except Exception as e:
+                print(f"Warning: Batch request failed: {str(e)}")
+                # Set all requests in this batch to None
+                for req in batch:
+                    all_responses[req['id']] = None
+
+        return all_responses
+
     def _get_all_pages(self, endpoint, use_beta=False):
         """
         Get all pages of results from paginated endpoint
@@ -324,7 +376,11 @@ class GraphClient:
 
     # All Policies Summary
     def _add_assignment_counts(self, policies, policy_type=None):
-        """Add assignment counts and group names to policies"""
+        """Add assignment counts and group names to policies using batch requests for performance"""
+        # First pass: Collect all assignments and group IDs
+        all_group_ids = set()
+        policy_assignments = {}
+
         for policy in policies:
             try:
                 policy_id = policy.get('id')
@@ -333,7 +389,7 @@ class GraphClient:
                     policy['assignmentGroups'] = []
                     continue
 
-                # Determine the actual policy type - check policySource first, then use parameter
+                # Determine the actual policy type
                 actual_type = policy_type
                 if policy.get('policySource'):
                     if policy['policySource'] == 'intents':
@@ -359,31 +415,61 @@ class GraphClient:
 
                 assignment_list = assignments.get('value', [])
                 policy['assignmentCount'] = len(assignment_list)
+                policy_assignments[policy_id] = assignment_list
 
-                # Extract group IDs and names for filtering
-                group_names = []
+                # Collect unique group IDs
                 for assignment in assignment_list:
                     target = assignment.get('target', {})
                     group_id = target.get('groupId')
                     if group_id:
-                        # Fetch group name
-                        try:
-                            group = self._make_request('GET', f'/groups/{group_id}')
-                            group_name = group.get('displayName', group_id)
-                            group_names.append(group_name)
-                        except:
-                            # If we can't get the group name, use the ID
-                            group_names.append(group_id)
-                    elif target.get('@odata.type') == '#microsoft.graph.allDevicesAssignmentTarget':
-                        group_names.append('All Devices')
-                    elif target.get('@odata.type') == '#microsoft.graph.allLicensedUsersAssignmentTarget':
-                        group_names.append('All Users')
+                        all_group_ids.add(group_id)
 
-                policy['assignmentGroups'] = group_names
             except Exception as e:
                 print(f"Warning: Could not get assignments for policy {policy.get('displayName', 'Unknown')}: {str(e)}")
                 policy['assignmentCount'] = 0
                 policy['assignmentGroups'] = []
+
+        # Batch fetch all group names
+        group_name_cache = {}
+        if all_group_ids:
+            batch_requests = []
+            for idx, group_id in enumerate(all_group_ids):
+                batch_requests.append({
+                    'id': str(idx),
+                    'method': 'GET',
+                    'url': f'/groups/{group_id}?$select=id,displayName'
+                })
+
+            batch_responses = self._batch_request(batch_requests)
+
+            # Build group name cache
+            id_to_idx = {gid: str(idx) for idx, gid in enumerate(all_group_ids)}
+            for group_id in all_group_ids:
+                idx = id_to_idx[group_id]
+                group_data = batch_responses.get(idx)
+                if group_data and isinstance(group_data, dict):
+                    group_name_cache[group_id] = group_data.get('displayName', group_id)
+                else:
+                    group_name_cache[group_id] = group_id
+
+        # Second pass: Assign group names to policies
+        for policy in policies:
+            policy_id = policy.get('id')
+            if policy_id not in policy_assignments:
+                continue
+
+            group_names = []
+            for assignment in policy_assignments[policy_id]:
+                target = assignment.get('target', {})
+                group_id = target.get('groupId')
+                if group_id:
+                    group_names.append(group_name_cache.get(group_id, group_id))
+                elif target.get('@odata.type') == '#microsoft.graph.allDevicesAssignmentTarget':
+                    group_names.append('All Devices')
+                elif target.get('@odata.type') == '#microsoft.graph.allLicensedUsersAssignmentTarget':
+                    group_names.append('All Users')
+
+            policy['assignmentGroups'] = group_names
 
         return policies
 

@@ -207,44 +207,51 @@ function displayAllPolicies(policies) {
 
     console.log('Policies data:', policies);
 
-    // Count total policies
-    let totalCount = 0;
-    const allPolicies = [];
+    // Use a Map to deduplicate policies by ID
+    const policyMap = new Map();
 
-    // Collect all policies into a single array
+    // Collect all policies, deduplicating by ID (keep first occurrence)
     if (policies.compliance_policies) {
         console.log('Compliance policies:', policies.compliance_policies.length);
         policies.compliance_policies.forEach(p => {
-            allPolicies.push({...p, sourceType: 'Compliance Policy'});
+            if (!policyMap.has(p.id)) {
+                policyMap.set(p.id, {...p, sourceType: 'Compliance Policy'});
+            }
         });
-        totalCount += policies.compliance_policies.length;
     }
 
     if (policies.configuration_policies) {
         console.log('Configuration policies:', policies.configuration_policies.length);
         policies.configuration_policies.forEach(p => {
-            allPolicies.push({...p, sourceType: 'Configuration Policy'});
+            if (!policyMap.has(p.id)) {
+                policyMap.set(p.id, {...p, sourceType: 'Configuration Policy'});
+            }
         });
-        totalCount += policies.configuration_policies.length;
     }
 
     if (policies.endpoint_security_intents) {
         console.log('Endpoint security intents:', policies.endpoint_security_intents.length);
         policies.endpoint_security_intents.forEach(p => {
-            allPolicies.push({...p, sourceType: 'Endpoint Security'});
+            if (!policyMap.has(p.id)) {
+                policyMap.set(p.id, {...p, sourceType: 'Endpoint Security'});
+            }
         });
-        totalCount += policies.endpoint_security_intents.length;
     }
 
     if (policies.configuration_profiles) {
         console.log('Configuration profiles:', policies.configuration_profiles.length);
         policies.configuration_profiles.forEach(p => {
-            allPolicies.push({...p, sourceType: 'Settings Catalog'});
+            if (!policyMap.has(p.id)) {
+                policyMap.set(p.id, {...p, sourceType: 'Settings Catalog'});
+            }
         });
-        totalCount += policies.configuration_profiles.length;
     }
 
-    console.log('Total policies:', totalCount);
+    // Convert map to array for display
+    const allPolicies = Array.from(policyMap.values());
+    const totalCount = allPolicies.length;
+
+    console.log('Total unique policies:', totalCount);
     console.log('All policies array:', allPolicies);
 
     if (totalCount === 0) {
