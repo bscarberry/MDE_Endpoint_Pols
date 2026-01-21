@@ -302,6 +302,11 @@ function displayAllPolicies(policies) {
                         <option value="unassigned">Unassigned (0)</option>
                     </select>
                 </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Group Name</label>
+                    <input type="text" id="filterGroupName" class="filter-select" placeholder="Enter group name..." oninput="applyFilters()" style="padding: 8px;">
+                </div>
             </div>
         </div>
 
@@ -341,6 +346,8 @@ function displayAllPolicies(policies) {
             const platform = getPolicyPlatform(policy);
             const assignmentCount = policy.assignmentCount !== undefined ? policy.assignmentCount : 0;
             const assignmentText = assignmentCount + ' group(s)';
+            const assignmentGroups = policy.assignmentGroups || [];
+            const groupNamesStr = assignmentGroups.join('|').toLowerCase();
 
             // Format created date
             const createdDate = policy.createdDateTime || policy.creationDate;
@@ -355,6 +362,7 @@ function displayAllPolicies(policies) {
                     data-assignments="${assignmentCount}"
                     data-name="${displayName.toLowerCase()}"
                     data-created="${createdSort}"
+                    data-groups="${groupNamesStr}"
                     onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
                     <td><strong>${displayName}</strong></td>
                     <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
@@ -837,6 +845,7 @@ function applyFilters() {
     const typeFilter = document.getElementById('filterType');
     const platformFilter = document.getElementById('filterPlatform');
     const assignmentsFilter = document.getElementById('filterAssignments');
+    const groupNameFilter = document.getElementById('filterGroupName');
 
     if (!categoryFilter || !typeFilter || !platformFilter || !assignmentsFilter) {
         return;
@@ -847,6 +856,7 @@ function applyFilters() {
     const selectedTypes = Array.from(typeFilter.selectedOptions).map(opt => opt.value);
     const selectedPlatforms = Array.from(platformFilter.selectedOptions).map(opt => opt.value);
     const assignmentValue = assignmentsFilter.value;
+    const groupNameValue = groupNameFilter ? groupNameFilter.value.toLowerCase().trim() : '';
 
     // Get all table rows
     const tbody = document.getElementById('policyTableBody');
@@ -860,6 +870,7 @@ function applyFilters() {
         const type = row.getAttribute('data-type');
         const platform = row.getAttribute('data-platform');
         const assignments = parseInt(row.getAttribute('data-assignments'));
+        const groups = row.getAttribute('data-groups') || '';
 
         let showRow = true;
 
@@ -885,6 +896,11 @@ function applyFilters() {
             showRow = false;
         }
 
+        // Apply group name filter (case-insensitive partial match)
+        if (groupNameValue && !groups.includes(groupNameValue)) {
+            showRow = false;
+        }
+
         // Show/hide row
         row.style.display = showRow ? '' : 'none';
         if (showRow) visibleCount++;
@@ -902,6 +918,7 @@ function clearAllFilters() {
     const typeFilter = document.getElementById('filterType');
     const platformFilter = document.getElementById('filterPlatform');
     const assignmentsFilter = document.getElementById('filterAssignments');
+    const groupNameFilter = document.getElementById('filterGroupName');
 
     // Clear all selections
     if (categoryFilter) {
@@ -915,6 +932,9 @@ function clearAllFilters() {
     }
     if (assignmentsFilter) {
         assignmentsFilter.value = '';
+    }
+    if (groupNameFilter) {
+        groupNameFilter.value = '';
     }
 
     // Reapply filters (which will show all)

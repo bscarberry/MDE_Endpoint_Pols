@@ -324,12 +324,13 @@ class GraphClient:
 
     # All Policies Summary
     def _add_assignment_counts(self, policies, policy_type=None):
-        """Add assignment counts to policies without fetching full assignment data"""
+        """Add assignment counts and group names to policies"""
         for policy in policies:
             try:
                 policy_id = policy.get('id')
                 if not policy_id:
                     policy['assignmentCount'] = 0
+                    policy['assignmentGroups'] = []
                     continue
 
                 # Determine the actual policy type - check policySource first, then use parameter
@@ -353,12 +354,36 @@ class GraphClient:
                     assignments = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/assignments', use_beta=True)
                 else:
                     policy['assignmentCount'] = 0
+                    policy['assignmentGroups'] = []
                     continue
 
-                policy['assignmentCount'] = len(assignments.get('value', []))
+                assignment_list = assignments.get('value', [])
+                policy['assignmentCount'] = len(assignment_list)
+
+                # Extract group IDs and names for filtering
+                group_names = []
+                for assignment in assignment_list:
+                    target = assignment.get('target', {})
+                    group_id = target.get('groupId')
+                    if group_id:
+                        # Fetch group name
+                        try:
+                            group = self._make_request('GET', f'/groups/{group_id}')
+                            group_name = group.get('displayName', group_id)
+                            group_names.append(group_name)
+                        except:
+                            # If we can't get the group name, use the ID
+                            group_names.append(group_id)
+                    elif target.get('@odata.type') == '#microsoft.graph.allDevicesAssignmentTarget':
+                        group_names.append('All Devices')
+                    elif target.get('@odata.type') == '#microsoft.graph.allLicensedUsersAssignmentTarget':
+                        group_names.append('All Users')
+
+                policy['assignmentGroups'] = group_names
             except Exception as e:
                 print(f"Warning: Could not get assignments for policy {policy.get('displayName', 'Unknown')}: {str(e)}")
                 policy['assignmentCount'] = 0
+                policy['assignmentGroups'] = []
 
         return policies
 
