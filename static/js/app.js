@@ -625,21 +625,95 @@ function displayDevices(devices) {
     resultsTitle.textContent = `Managed Devices (${devices.length})`;
     updateActiveNav(2);
 
-    let html = '<table class="data-table"><tr><th>Device Name</th><th>OS</th><th>Compliance</th><th>Last Sync</th></tr>';
+    let html = '<table class="data-table"><tr><th>Device Name</th><th>OS</th><th>Compliance</th><th>Last Sync</th><th>Actions</th></tr>';
 
     devices.forEach(device => {
+        const lastSync = device.lastSyncDateTime ? new Date(device.lastSyncDateTime).toLocaleString() : 'N/A';
         html += `
-            <tr>
-                <td>${device.deviceName || 'Unknown'}</td>
+            <tr onclick="viewDeviceDetails('${device.id}')" style="cursor: pointer;">
+                <td><strong>${device.deviceName || 'Unknown'}</strong></td>
                 <td>${device.operatingSystem || 'N/A'}</td>
-                <td>${device.complianceState || 'Unknown'}</td>
-                <td>${device.lastSyncDateTime || 'N/A'}</td>
+                <td><span class="policy-badge" style="font-size: 12px;">${device.complianceState || 'Unknown'}</span></td>
+                <td style="font-size: 12px;">${lastSync}</td>
+                <td>
+                    <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
+                            onclick="event.stopPropagation(); viewDeviceDetails('${device.id}')">
+                        View Details
+                    </button>
+                </td>
             </tr>
         `;
     });
 
     html += '</table>';
     resultsContent.innerHTML = html;
+}
+
+async function viewDeviceDetails(deviceId) {
+    try {
+        const data = await fetchAPI(`/api/devices/${deviceId}`);
+        const device = data.data;
+
+        const deviceName = device.deviceName || 'Unknown Device';
+        const assignedPolicies = device.assignedPolicies || [];
+        const groupMemberships = device.groupMemberships || [];
+
+        let html = `
+            <h2>${deviceName}</h2>
+            <div style="margin-top: 20px;">
+                <h3>Device Information</h3>
+                <table class="data-table">
+                    <tr><th>Property</th><th>Value</th></tr>
+                    <tr><td>Device Name</td><td>${device.deviceName || 'N/A'}</td></tr>
+                    <tr><td>Operating System</td><td>${device.operatingSystem || 'N/A'} ${device.osVersion || ''}</td></tr>
+                    <tr><td>Compliance State</td><td>${device.complianceState || 'Unknown'}</td></tr>
+                    <tr><td>Enrollment Date</td><td>${device.enrolledDateTime ? new Date(device.enrolledDateTime).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><td>Last Sync</td><td>${device.lastSyncDateTime ? new Date(device.lastSyncDateTime).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><td>Serial Number</td><td>${device.serialNumber || 'N/A'}</td></tr>
+                    <tr><td>Model</td><td>${device.model || 'N/A'}</td></tr>
+                    <tr><td>Manufacturer</td><td>${device.manufacturer || 'N/A'}</td></tr>
+                </table>
+
+                <h3 style="margin-top: 24px;">Group Memberships (${groupMemberships.length})</h3>
+        `;
+
+        if (groupMemberships.length > 0) {
+            html += '<table class="data-table"><tr><th>Group Name</th></tr>';
+            groupMemberships.forEach(group => {
+                html += `<tr><td>${group.displayName}</td></tr>`;
+            });
+            html += '</table>';
+        } else {
+            html += '<p class="text-muted">No group memberships found</p>';
+        }
+
+        html += `
+                <h3 style="margin-top: 24px;">Assigned Policies (${assignedPolicies.length})</h3>
+        `;
+
+        if (assignedPolicies.length > 0) {
+            html += '<table class="data-table"><tr><th>Policy Name</th><th>Type</th><th>Assigned Via</th></tr>';
+            assignedPolicies.forEach(policy => {
+                const assignedGroups = policy.assignedGroups.join(', ') || 'Direct Assignment';
+                html += `
+                    <tr>
+                        <td><strong>${policy.name}</strong></td>
+                        <td><span class="policy-badge" style="font-size: 12px;">${policy.type}</span></td>
+                        <td style="font-size: 12px;">${assignedGroups}</td>
+                    </tr>
+                `;
+            });
+            html += '</table>';
+        } else {
+            html += '<p class="text-muted">No policies assigned to this device</p>';
+        }
+
+        html += '</div>';
+
+        showModal(html);
+    } catch (error) {
+        console.error('Failed to load device details:', error);
+    }
 }
 
 // Defender Functions

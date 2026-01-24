@@ -123,6 +123,55 @@ class GraphClient:
 
         return all_responses
 
+    def _batch_request_beta(self, requests_data):
+        """
+        Make batch request to Graph API beta endpoint
+
+        Args:
+            requests_data: List of request dictionaries with 'id', 'method', and 'url'
+
+        Returns:
+            Dictionary mapping request IDs to response bodies
+        """
+        if not requests_data:
+            return {}
+
+        # Microsoft Graph batch API supports up to 20 requests per batch
+        batch_size = 20
+        all_responses = {}
+
+        for i in range(0, len(requests_data), batch_size):
+            batch = requests_data[i:i+batch_size]
+
+            batch_payload = {
+                "requests": batch
+            }
+
+            try:
+                url = f"{self.base_url_beta}/$batch"
+                response = requests.post(
+                    url=url,
+                    headers=self.headers,
+                    json=batch_payload
+                )
+                response.raise_for_status()
+                batch_response = response.json()
+
+                # Map responses by ID
+                for resp in batch_response.get('responses', []):
+                    req_id = resp.get('id')
+                    if resp.get('status') == 200:
+                        all_responses[req_id] = resp.get('body')
+                    else:
+                        all_responses[req_id] = None
+
+            except Exception as e:
+                print(f"Warning: Beta batch request failed: {str(e)}")
+                for req in batch:
+                    all_responses[req['id']] = None
+
+        return all_responses
+
     def _get_all_pages(self, endpoint, use_beta=False):
         """
         Get all pages of results from paginated endpoint
@@ -365,6 +414,36 @@ class GraphClient:
         """Get all managed devices"""
         return self._get_all_pages('/deviceManagement/managedDevices')
 
+    def get_device_details(self, device_id):
+        """Get device details including group memberships"""
+        try:
+            # Get device details
+            device = self._make_request('GET', f'/deviceManagement/managedDevices/{device_id}')
+
+            # Get Azure AD device object to fetch group memberships
+            azure_ad_device_id = device.get('azureADDeviceId')
+            if azure_ad_device_id:
+                try:
+                    # Get group memberships for the device
+                    memberships = self._get_all_pages(f'/devices(deviceId=\'{azure_ad_device_id}\')/memberOf')
+                    device['groupMemberships'] = [
+                        {
+                            'id': group.get('id'),
+                            'displayName': group.get('displayName', 'Unknown Group')
+                        }
+                        for group in memberships
+                        if group.get('@odata.type') == '#microsoft.graph.group'
+                    ]
+                except Exception as e:
+                    print(f"Warning: Could not fetch group memberships: {str(e)}")
+                    device['groupMemberships'] = []
+            else:
+                device['groupMemberships'] = []
+
+            return device
+        except Exception as e:
+            raise Exception(f"Failed to get device details: {str(e)}")
+
     # Groups (for assignments)
     def get_groups(self):
         """Get all Azure AD groups"""
@@ -376,58 +455,111 @@ class GraphClient:
 
     # All Policies Summary
     def _add_assignment_counts(self, policies, policy_type=None):
-        """Add assignment counts and group names to policies using batch requests for performance"""
-        # First pass: Collect all assignments and group IDs
+        """Add assignment counts and group names to policies using batch requests for maximum performance"""
+        if not policies:
+            return policies
+
+        # Build batch requests for ALL policy assignments
+        assignment_batch_requests = []
+        policy_metadata = {}  # Store policy type info for later
+
+        for idx, policy in enumerate(policies):
+            policy_id = policy.get('id')
+            if not policy_id:
+                policy['assignmentCount'] = 0
+                policy['assignmentGroups'] = []
+                continue
+
+            # Determine the actual policy type
+            actual_type = policy_type
+            if policy.get('policySource'):
+                if policy['policySource'] == 'intents':
+                    actual_type = 'intent'
+                elif policy['policySource'] == 'configurationPolicies':
+                    actual_type = 'configuration_profile'
+                elif policy['policySource'] in ['windows10EndpointProtectionConfiguration', 'deviceConfigurations']:
+                    actual_type = 'configuration'
+
+            # Build assignment endpoint URL
+            assignment_url = None
+            if actual_type == 'compliance':
+                assignment_url = f'/deviceManagement/deviceCompliancePolicies/{policy_id}/assignments'
+            elif actual_type == 'configuration':
+                assignment_url = f'/deviceManagement/deviceConfigurations/{policy_id}/assignments'
+            elif actual_type == 'intent':
+                assignment_url = f'/deviceManagement/intents/{policy_id}/assignments'
+            elif actual_type == 'configuration_profile':
+                assignment_url = f'/deviceManagement/configurationPolicies/{policy_id}/assignments'
+
+            if assignment_url:
+                assignment_batch_requests.append({
+                    'id': str(idx),
+                    'method': 'GET',
+                    'url': assignment_url
+                })
+                policy_metadata[str(idx)] = {
+                    'policy_id': policy_id,
+                    'policy_index': idx,
+                    'needs_beta': actual_type in ['intent', 'configuration_profile']
+                }
+
+        # Split into v1.0 and beta batches since batch endpoint doesn't support mixing
+        v1_requests = [r for r in assignment_batch_requests if not policy_metadata[r['id']]['needs_beta']]
+        beta_requests = [r for r in assignment_batch_requests if policy_metadata[r['id']]['needs_beta']]
+
+        # Execute batch requests for assignments
         all_group_ids = set()
         policy_assignments = {}
 
-        for policy in policies:
-            try:
-                policy_id = policy.get('id')
-                if not policy_id:
-                    policy['assignmentCount'] = 0
-                    policy['assignmentGroups'] = []
-                    continue
+        # Process v1.0 batch
+        if v1_requests:
+            v1_responses = self._batch_request(v1_requests)
+            for req_id, response_data in v1_responses.items():
+                if response_data and isinstance(response_data, dict):
+                    meta = policy_metadata[req_id]
+                    policy_id = meta['policy_id']
+                    policy_idx = meta['policy_index']
+                    assignment_list = response_data.get('value', [])
 
-                # Determine the actual policy type
-                actual_type = policy_type
-                if policy.get('policySource'):
-                    if policy['policySource'] == 'intents':
-                        actual_type = 'intent'
-                    elif policy['policySource'] == 'configurationPolicies':
-                        actual_type = 'configuration_profile'
-                    elif policy['policySource'] in ['windows10EndpointProtectionConfiguration', 'deviceConfigurations']:
-                        actual_type = 'configuration'
+                    policies[policy_idx]['assignmentCount'] = len(assignment_list)
+                    policy_assignments[policy_id] = assignment_list
 
-                # Fetch assignments based on actual policy type
-                if actual_type == 'compliance':
-                    assignments = self._make_request('GET', f'/deviceManagement/deviceCompliancePolicies/{policy_id}/assignments')
-                elif actual_type == 'configuration':
-                    assignments = self._make_request('GET', f'/deviceManagement/deviceConfigurations/{policy_id}/assignments')
-                elif actual_type == 'intent':
-                    assignments = self._make_request('GET', f'/deviceManagement/intents/{policy_id}/assignments', use_beta=True)
-                elif actual_type == 'configuration_profile':
-                    assignments = self._make_request('GET', f'/deviceManagement/configurationPolicies/{policy_id}/assignments', use_beta=True)
+                    # Collect group IDs
+                    for assignment in assignment_list:
+                        target = assignment.get('target', {})
+                        group_id = target.get('groupId')
+                        if group_id:
+                            all_group_ids.add(group_id)
                 else:
-                    policy['assignmentCount'] = 0
-                    policy['assignmentGroups'] = []
-                    continue
+                    meta = policy_metadata[req_id]
+                    policy_idx = meta['policy_index']
+                    policies[policy_idx]['assignmentCount'] = 0
+                    policies[policy_idx]['assignmentGroups'] = []
 
-                assignment_list = assignments.get('value', [])
-                policy['assignmentCount'] = len(assignment_list)
-                policy_assignments[policy_id] = assignment_list
+        # Process beta batch
+        if beta_requests:
+            beta_responses = self._batch_request_beta(beta_requests)
+            for req_id, response_data in beta_responses.items():
+                if response_data and isinstance(response_data, dict):
+                    meta = policy_metadata[req_id]
+                    policy_id = meta['policy_id']
+                    policy_idx = meta['policy_index']
+                    assignment_list = response_data.get('value', [])
 
-                # Collect unique group IDs
-                for assignment in assignment_list:
-                    target = assignment.get('target', {})
-                    group_id = target.get('groupId')
-                    if group_id:
-                        all_group_ids.add(group_id)
+                    policies[policy_idx]['assignmentCount'] = len(assignment_list)
+                    policy_assignments[policy_id] = assignment_list
 
-            except Exception as e:
-                print(f"Warning: Could not get assignments for policy {policy.get('displayName', 'Unknown')}: {str(e)}")
-                policy['assignmentCount'] = 0
-                policy['assignmentGroups'] = []
+                    # Collect group IDs
+                    for assignment in assignment_list:
+                        target = assignment.get('target', {})
+                        group_id = target.get('groupId')
+                        if group_id:
+                            all_group_ids.add(group_id)
+                else:
+                    meta = policy_metadata[req_id]
+                    policy_idx = meta['policy_index']
+                    policies[policy_idx]['assignmentCount'] = 0
+                    policies[policy_idx]['assignmentGroups'] = []
 
         # Batch fetch all group names
         group_name_cache = {}
@@ -452,10 +584,14 @@ class GraphClient:
                 else:
                     group_name_cache[group_id] = group_id
 
-        # Second pass: Assign group names to policies
+        # Final pass: Assign group names to policies
         for policy in policies:
             policy_id = policy.get('id')
             if policy_id not in policy_assignments:
+                if 'assignmentCount' not in policy:
+                    policy['assignmentCount'] = 0
+                if 'assignmentGroups' not in policy:
+                    policy['assignmentGroups'] = []
                 continue
 
             group_names = []

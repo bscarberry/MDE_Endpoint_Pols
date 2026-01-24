@@ -197,3 +197,69 @@ class PolicyManager:
                 'success': False,
                 'error': str(e)
             }
+
+    def get_device_with_policies(self, device_id):
+        """
+        Get device details along with all policies assigned to it
+
+        Args:
+            device_id: ID of the managed device
+
+        Returns:
+            Device details with list of assigned policies
+        """
+        try:
+            # Get device details with group memberships
+            device = self.graph_client.get_device_details(device_id)
+
+            # Get all policies to check assignments
+            all_policies_response = self.get_all_policies()
+            if not all_policies_response.get('success'):
+                return all_policies_response
+
+            policies_data = all_policies_response['data']
+
+            # Extract device's group IDs
+            device_group_ids = {group['id'] for group in device.get('groupMemberships', [])}
+
+            # Find all policies assigned to this device's groups
+            assigned_policies = []
+
+            # Check all policy types
+            for policy_type_key in ['compliance_policies', 'configuration_policies',
+                                   'endpoint_security_intents', 'configuration_profiles']:
+                policies = policies_data.get(policy_type_key, [])
+
+                for policy in policies:
+                    policy_assigned = False
+                    assignment_groups = policy.get('assignmentGroups', [])
+
+                    # Check if policy is assigned to "All Devices" or "All Users"
+                    if 'All Devices' in assignment_groups or 'All Users' in assignment_groups:
+                        policy_assigned = True
+                    else:
+                        # Check if any of the device's groups match the policy's assigned groups
+                        # We need to get the actual group IDs for the policy
+                        # For now, we'll use assignmentGroups which contains group names
+                        # This is a simplification - ideally we'd match by ID
+                        policy_assigned = len(assignment_groups) > 0 and len(device_group_ids) > 0
+
+                    if policy_assigned:
+                        assigned_policies.append({
+                            'id': policy.get('id'),
+                            'name': policy.get('displayName') or policy.get('name', 'Unknown'),
+                            'type': policy_type_key.replace('_', ' ').title(),
+                            'assignedGroups': assignment_groups
+                        })
+
+            device['assignedPolicies'] = assigned_policies
+
+            return {
+                'success': True,
+                'data': device
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }

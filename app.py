@@ -276,6 +276,21 @@ def get_devices():
         }), 500
 
 
+@app.route('/api/devices/<device_id>')
+@login_required
+def get_device_details(device_id):
+    """Get device details with assigned policies"""
+    try:
+        pm = get_policy_manager()
+        result = pm.get_device_with_policies(device_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/cache/clear', methods=['POST'])
 def clear_cache():
     """Clear all cached data"""
