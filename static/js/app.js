@@ -735,21 +735,110 @@ function displayMachines(machines) {
     resultsTitle.textContent = `Defender Machines (${machines.length})`;
     updateActiveNav(3);
 
-    let html = '<table class="data-table"><tr><th>Computer Name</th><th>OS Platform</th><th>Health Status</th><th>Risk Score</th></tr>';
+    let html = '<table class="data-table"><tr><th>Computer Name</th><th>OS Platform</th><th>Onboarded Status</th><th>Health Status</th><th>Risk Score</th><th>Actions</th></tr>';
 
     machines.forEach(machine => {
+        const onboardingStatus = machine.onboardingStatus || 'Unknown';
+        const healthStatus = machine.healthStatus || 'Unknown';
+        const riskScore = machine.riskScore || 'N/A';
+        const lastSeen = machine.lastSeen ? new Date(machine.lastSeen).toLocaleString() : 'N/A';
+
         html += `
-            <tr>
-                <td>${machine.computerDnsName || 'Unknown'}</td>
+            <tr onclick="viewMachineDetails('${machine.id}')" style="cursor: pointer;">
+                <td><strong>${machine.computerDnsName || 'Unknown'}</strong></td>
                 <td>${machine.osPlatform || 'N/A'}</td>
-                <td>${machine.healthStatus || 'Unknown'}</td>
-                <td>${machine.riskScore || 'N/A'}</td>
+                <td><span class="policy-badge" style="font-size: 12px;">${onboardingStatus}</span></td>
+                <td><span class="policy-badge" style="font-size: 12px;">${healthStatus}</span></td>
+                <td>${riskScore}</td>
+                <td>
+                    <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
+                            onclick="event.stopPropagation(); viewMachineDetails('${machine.id}')">
+                        View Details
+                    </button>
+                </td>
             </tr>
         `;
     });
 
     html += '</table>';
     resultsContent.innerHTML = html;
+}
+
+async function viewMachineDetails(machineId) {
+    try {
+        const data = await fetchAPI(`/api/defender/machines/${machineId}`);
+        const machine = data.data;
+
+        const machineName = machine.computerDnsName || 'Unknown Machine';
+        const assignedPolicies = machine.assignedPolicies || [];
+        const groupMemberships = machine.groupMemberships || [];
+        const intuneDeviceFound = machine.intuneDeviceFound || false;
+
+        let html = `
+            <h2>${machineName}</h2>
+            <div style="margin-top: 20px;">
+                <h3>Machine Information</h3>
+                <table class="data-table">
+                    <tr><th>Property</th><th>Value</th></tr>
+                    <tr><td>Computer Name</td><td>${machine.computerDnsName || 'N/A'}</td></tr>
+                    <tr><td>OS Platform</td><td>${machine.osPlatform || 'N/A'}</td></tr>
+                    <tr><td>OS Version</td><td>${machine.osVersion || 'N/A'}</td></tr>
+                    <tr><td>Onboarding Status</td><td><span class="policy-badge" style="font-size: 12px;">${machine.onboardingStatus || 'Unknown'}</span></td></tr>
+                    <tr><td>Health Status</td><td><span class="policy-badge" style="font-size: 12px;">${machine.healthStatus || 'Unknown'}</span></td></tr>
+                    <tr><td>Risk Score</td><td>${machine.riskScore || 'N/A'}</td></tr>
+                    <tr><td>Exposure Level</td><td>${machine.exposureLevel || 'N/A'}</td></tr>
+                    <tr><td>Last Seen</td><td>${machine.lastSeen ? new Date(machine.lastSeen).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><td>First Seen</td><td>${machine.firstSeen ? new Date(machine.firstSeen).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><td>IP Addresses</td><td>${machine.ipAddresses ? machine.ipAddresses.join(', ') : 'N/A'}</td></tr>
+                    <tr><td>Machine Tags</td><td>${machine.machineTags ? machine.machineTags.join(', ') : 'None'}</td></tr>
+                </table>
+        `;
+
+        if (!intuneDeviceFound) {
+            html += '<p style="margin-top: 16px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: var(--danger);"><strong>Note:</strong> No matching Intune device found. Policy information may not be available.</p>';
+        }
+
+        html += `
+                <h3 style="margin-top: 24px;">Group Memberships (${groupMemberships.length})</h3>
+        `;
+
+        if (groupMemberships.length > 0) {
+            html += '<table class="data-table"><tr><th>Group Name</th></tr>';
+            groupMemberships.forEach(group => {
+                html += `<tr><td>${group.displayName}</td></tr>`;
+            });
+            html += '</table>';
+        } else {
+            html += '<p class="text-muted">No group memberships found</p>';
+        }
+
+        html += `
+                <h3 style="margin-top: 24px;">Assigned Policies (${assignedPolicies.length})</h3>
+        `;
+
+        if (assignedPolicies.length > 0) {
+            html += '<table class="data-table"><tr><th>Policy Name</th><th>Type</th><th>Assigned Via</th></tr>';
+            assignedPolicies.forEach(policy => {
+                const assignedGroups = policy.assignedGroups.join(', ') || 'Direct Assignment';
+                html += `
+                    <tr>
+                        <td><strong>${policy.name}</strong></td>
+                        <td><span class="policy-badge" style="font-size: 12px;">${policy.type}</span></td>
+                        <td style="font-size: 12px;">${assignedGroups}</td>
+                    </tr>
+                `;
+            });
+            html += '</table>';
+        } else {
+            html += '<p class="text-muted">No policies assigned to this machine</p>';
+        }
+
+        html += '</div>';
+
+        showModal(html);
+    } catch (error) {
+        console.error('Failed to load machine details:', error);
+    }
 }
 
 async function loadAlerts() {

@@ -143,6 +143,73 @@ class PolicyManager:
                 'error': str(e)
             }
 
+    def get_defender_machine_with_policies(self, machine_id):
+        """
+        Get Defender machine details along with all policies assigned to it
+
+        Args:
+            machine_id: ID of the Defender machine
+
+        Returns:
+            Machine details with list of assigned policies
+        """
+        try:
+            # Get machine details from Defender
+            machine = self.defender_client.get_machine_by_id(machine_id)
+
+            # Get corresponding Intune managed device by matching identifiers
+            intune_device = None
+            try:
+                # Try to find matching device in Intune by device name or Azure AD device ID
+                devices_response = self.get_managed_devices()
+                if devices_response.get('success'):
+                    devices = devices_response['data']
+
+                    # Try matching by Azure AD device ID first
+                    machine_aad_device_id = machine.get('aadDeviceId')
+                    if machine_aad_device_id:
+                        for device in devices:
+                            if device.get('azureADDeviceId') == machine_aad_device_id:
+                                intune_device = device
+                                break
+
+                    # If not found, try matching by device name
+                    if not intune_device:
+                        machine_name = machine.get('computerDnsName', '').split('.')[0].lower()
+                        for device in devices:
+                            device_name = device.get('deviceName', '').lower()
+                            if device_name == machine_name:
+                                intune_device = device
+                                break
+            except Exception as e:
+                print(f"Warning: Could not find matching Intune device: {str(e)}")
+
+            # If we found matching Intune device, get its policies
+            assigned_policies = []
+            group_memberships = []
+
+            if intune_device:
+                # Get device with policies
+                device_with_policies = self.get_device_with_policies(intune_device['id'])
+                if device_with_policies.get('success'):
+                    device_data = device_with_policies['data']
+                    assigned_policies = device_data.get('assignedPolicies', [])
+                    group_memberships = device_data.get('groupMemberships', [])
+
+            machine['assignedPolicies'] = assigned_policies
+            machine['groupMemberships'] = group_memberships
+            machine['intuneDeviceFound'] = intune_device is not None
+
+            return {
+                'success': True,
+                'data': machine
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
     def get_defender_alerts(self, filters=None):
         """Get security alerts from Defender XDR"""
         try:

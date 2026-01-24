@@ -222,6 +222,21 @@ def get_machines():
         }), 500
 
 
+@app.route('/api/defender/machines/<machine_id>')
+@login_required
+def get_machine_details(machine_id):
+    """Get Defender machine details with assigned policies"""
+    try:
+        pm = get_policy_manager()
+        result = pm.get_defender_machine_with_policies(machine_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/defender/alerts')
 @login_required
 def get_alerts():
