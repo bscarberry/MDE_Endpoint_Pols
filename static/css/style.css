@@ -289,6 +289,48 @@ body {
     font-weight: 400;
 }
 
+/* Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+@media (max-width: 1024px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-card {
+    background-color: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(12px);
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid var(--gray-800);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease-in-out;
+}
+
+.chart-card:hover {
+    border-color: var(--gray-700);
+    box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3);
+}
+
+.chart-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--terminal-green);
+    margin-bottom: 16px;
+    text-transform: lowercase;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.chart-card canvas {
+    max-height: 300px;
+}
+
 /* Content Section */
 .content-section {
     background-color: rgba(17, 24, 39, 0.5);

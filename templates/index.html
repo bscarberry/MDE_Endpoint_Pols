@@ -42,14 +42,32 @@
         </div>
     </div>
 
-    <!-- Recent Policies -->
+    <!-- Policy Analytics Dashboard -->
     <div class="section-title">
-        <span class="nav-comment">//</span> recent_policies
+        <span class="nav-comment">//</span> policy_analytics
         <a href="#" onclick="loadPolicies(); return false;" class="view-all">view_all() →</a>
     </div>
-    <div class="content-section">
-        <div id="recentPolicies" class="policy-list">
-            <p class="text-muted">Loading policies...</p>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3 class="chart-title">Policy Distribution by Category</h3>
+            <canvas id="categoryChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h3 class="chart-title">Assignment Coverage</h3>
+            <canvas id="assignmentChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h3 class="chart-title">Platform Distribution</h3>
+            <canvas id="platformChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h3 class="chart-title">Policy Types Breakdown</h3>
+            <canvas id="typeChart"></canvas>
         </div>
     </div>
 </div>

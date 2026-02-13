@@ -118,8 +118,8 @@ async function loadDashboard() {
         // Load device count
         loadDeviceCount();
 
-        // Display recent policies
-        displayRecentPolicies(data.data);
+        // Create dashboard charts
+        createDashboardCharts(data.data);
 
     } catch (error) {
         console.error('Failed to load dashboard:', error);
@@ -136,53 +136,329 @@ async function loadDeviceCount() {
     }
 }
 
-function displayRecentPolicies(policies) {
-    const container = document.getElementById('recentPolicies');
-    let html = '';
+// Store chart instances globally for cleanup
+let dashboardCharts = {
+    category: null,
+    assignment: null,
+    platform: null,
+    type: null
+};
 
-    // Get first 9 policies from endpoint security (showing most relevant)
-    const recentPolicies = [];
-
-    if (policies.endpoint_security_intents && policies.endpoint_security_intents.length > 0) {
-        recentPolicies.push(...policies.endpoint_security_intents.slice(0, 9));
-    }
-
-    if (recentPolicies.length === 0 && policies.compliance_policies && policies.compliance_policies.length > 0) {
-        recentPolicies.push(...policies.compliance_policies.slice(0, 5));
-    }
-
-    if (recentPolicies.length === 0 && policies.configuration_policies && policies.configuration_policies.length > 0) {
-        recentPolicies.push(...policies.configuration_policies.slice(0, 5));
-    }
-
-    if (recentPolicies.length === 0) {
-        container.innerHTML = '<p class="text-muted">No policies found</p>';
-        return;
-    }
-
-    recentPolicies.forEach(policy => {
-        const displayName = getPolicyDisplayName(policy);
-        const description = policy.description || 'No description available';
-        const policyType = getPolicyType(policy);
-        const category = categorizePolicyType(policy);
-
-        const badgeClass = category.includes('Antivirus') || category.includes('EDR') ? 'badge-security' :
-                          category.includes('Firewall') ? 'badge-compliance' :
-                          category.includes('ASR') || category.includes('Attack Surface') ? 'badge-security' :
-                          'badge-configuration';
-
-        html += `
-            <div class="policy-item" onclick="viewPolicyDetails('${policyType}', '${policy.id}')">
-                <div class="policy-header">
-                    <div class="policy-name">${displayName}</div>
-                    <span class="policy-badge ${badgeClass}">${category}</span>
-                </div>
-                <div class="policy-description">${description}</div>
-            </div>
-        `;
+function createDashboardCharts(policies) {
+    // Destroy existing charts
+    Object.values(dashboardCharts).forEach(chart => {
+        if (chart) chart.destroy();
     });
 
-    container.innerHTML = html;
+    // Collect all policies into single array for analysis
+    const allPolicies = [
+        ...(policies.compliance_policies || []),
+        ...(policies.configuration_policies || []),
+        ...(policies.endpoint_security_intents || []),
+        ...(policies.configuration_profiles || [])
+    ];
+
+    // Deduplicate by ID
+    const policyMap = new Map();
+    allPolicies.forEach(p => {
+        if (!policyMap.has(p.id)) {
+            policyMap.set(p.id, p);
+        }
+    });
+    const uniquePolicies = Array.from(policyMap.values());
+
+    // Create charts
+    dashboardCharts.category = createCategoryChart(uniquePolicies);
+    dashboardCharts.assignment = createAssignmentChart(uniquePolicies);
+    dashboardCharts.platform = createPlatformChart(uniquePolicies);
+    dashboardCharts.type = createTypeChart(policies);
+}
+
+function createCategoryChart(policies) {
+    const categoryCounts = {};
+
+    policies.forEach(policy => {
+        const category = categorizePolicyType(policy);
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+
+    const ctx = document.getElementById('categoryChart');
+    if (!ctx) return null;
+
+    return new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(categoryCounts),
+            datasets: [{
+                data: Object.values(categoryCounts),
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(236, 72, 153, 0.8)',
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(251, 146, 60, 0.8)'
+                ],
+                borderColor: '#1f2937',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'JetBrains Mono',
+                            size: 11
+                        },
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    titleColor: '#10b981',
+                    bodyColor: '#f3f4f6',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    titleFont: {
+                        family: 'JetBrains Mono'
+                    },
+                    bodyFont: {
+                        family: 'JetBrains Mono'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createAssignmentChart(policies) {
+    let assigned = 0;
+    let unassigned = 0;
+
+    policies.forEach(policy => {
+        const assignmentCount = policy.assignmentCount || 0;
+        if (assignmentCount > 0) {
+            assigned++;
+        } else {
+            unassigned++;
+        }
+    });
+
+    const ctx = document.getElementById('assignmentChart');
+    if (!ctx) return null;
+
+    return new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Assigned', 'Unassigned'],
+            datasets: [{
+                data: [assigned, unassigned],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(107, 114, 128, 0.5)'
+                ],
+                borderColor: '#1f2937',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'JetBrains Mono',
+                            size: 11
+                        },
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    titleColor: '#10b981',
+                    bodyColor: '#f3f4f6',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    titleFont: {
+                        family: 'JetBrains Mono'
+                    },
+                    bodyFont: {
+                        family: 'JetBrains Mono'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createPlatformChart(policies) {
+    const platformCounts = {};
+
+    policies.forEach(policy => {
+        const platform = getPolicyPlatform(policy);
+        platformCounts[platform] = (platformCounts[platform] || 0) + 1;
+    });
+
+    const ctx = document.getElementById('platformChart');
+    if (!ctx) return null;
+
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(platformCounts),
+            datasets: [{
+                label: 'Policies',
+                data: Object.values(platformCounts),
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderColor: 'rgba(16, 185, 129, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'JetBrains Mono'
+                        },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'JetBrains Mono',
+                            size: 10
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    titleColor: '#10b981',
+                    bodyColor: '#f3f4f6',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    titleFont: {
+                        family: 'JetBrains Mono'
+                    },
+                    bodyFont: {
+                        family: 'JetBrains Mono'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createTypeChart(policies) {
+    const typeCounts = {
+        'Compliance': policies.compliance_policies?.length || 0,
+        'Configuration': policies.configuration_policies?.length || 0,
+        'Endpoint Security': policies.endpoint_security_intents?.length || 0,
+        'Settings Catalog': policies.configuration_profiles?.length || 0
+    };
+
+    const ctx = document.getElementById('typeChart');
+    if (!ctx) return null;
+
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(typeCounts),
+            datasets: [{
+                label: 'Policies',
+                data: Object.values(typeCounts),
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(239, 68, 68, 1)',
+                    'rgba(245, 158, 11, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'JetBrains Mono'
+                        },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'JetBrains Mono',
+                            size: 10
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    titleColor: '#10b981',
+                    bodyColor: '#f3f4f6',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    titleFont: {
+                        family: 'JetBrains Mono'
+                    },
+                    bodyFont: {
+                        family: 'JetBrains Mono'
+                    }
+                }
+            }
+        }
+    });
 }
 
 // Policy Functions
