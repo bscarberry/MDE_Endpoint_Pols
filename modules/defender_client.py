@@ -1,9 +1,25 @@
 """
 Microsoft Defender XDR API Client
 """
+import re
+import logging
 import requests
+from urllib.parse import quote
 from config import Config
 from modules.auth import AuthenticationManager
+
+logger = logging.getLogger(__name__)
+
+# Allowed OData filter fields for the alerts endpoint
+ALLOWED_ALERT_FILTER_FIELDS = {
+    'severity', 'status', 'category', 'createdDateTime',
+    'lastUpdatedDateTime', 'assignedTo', 'classification',
+    'determination', 'detectionSource', 'threatFamilyName',
+    'title', 'machineId',
+}
+
+# Maximum KQL query length to prevent abuse
+MAX_KQL_QUERY_LENGTH = 10000
 
 
 class DefenderClient:
@@ -84,16 +100,39 @@ class DefenderClient:
         """Get discovered vulnerabilities"""
         return self._make_request('GET', '/api/vulnerabilities')
 
+    @staticmethod
+    def _validate_odata_filter(filter_string):
+        """Validate OData filter to prevent injection attacks."""
+        if not filter_string:
+            return None
+        # Strip whitespace
+        filter_string = filter_string.strip()
+        # Reject excessively long filters
+        if len(filter_string) > 500:
+            raise ValueError("Filter string too long")
+        # Ensure only allowed field names are used
+        # Extract field names (words before operators like eq, ne, gt, lt, ge, le, contains)
+        field_pattern = re.compile(r'\b(\w+)\s+(?:eq|ne|gt|lt|ge|le)\b', re.IGNORECASE)
+        contains_pattern = re.compile(r'\bcontains\(\s*(\w+)', re.IGNORECASE)
+        fields = set(field_pattern.findall(filter_string))
+        fields.update(contains_pattern.findall(filter_string))
+        disallowed = fields - ALLOWED_ALERT_FILTER_FIELDS
+        if disallowed:
+            raise ValueError(f"Disallowed filter fields: {', '.join(disallowed)}")
+        return filter_string
+
     def get_alerts(self, filters=None):
         """
         Get security alerts
 
         Args:
-            filters: Optional OData filter string
+            filters: Optional OData filter string (validated against allowlist)
         """
         endpoint = '/api/alerts'
         if filters:
-            endpoint += f'?$filter={filters}'
+            validated = self._validate_odata_filter(filters)
+            if validated:
+                endpoint += f'?$filter={quote(validated, safe="()\'/ ")}'
         return self._make_request('GET', endpoint)
 
     def get_incidents(self):
@@ -105,10 +144,15 @@ class DefenderClient:
         Run advanced hunting query
 
         Args:
-            query: KQL query string
+            query: KQL query string (validated for length and basic safety)
 
         Returns:
             Query results
         """
+        if not query or not query.strip():
+            raise ValueError("Query cannot be empty")
+        if len(query) > MAX_KQL_QUERY_LENGTH:
+            raise ValueError(f"Query exceeds maximum length of {MAX_KQL_QUERY_LENGTH} characters")
+        logger.info("Executing advanced hunting query (%d chars)", len(query))
         payload = {'Query': query}
         return self._make_request('POST', '/api/advancedqueries/run', json=payload)

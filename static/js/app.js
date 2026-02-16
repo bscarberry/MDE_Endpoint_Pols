@@ -3,6 +3,17 @@
 // Global state
 let allPoliciesData = null;
 
+// HTML Escaping - prevents XSS when inserting API data into the DOM
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Utility Functions
 function showLoading() {
     document.getElementById('loadingSpinner').style.display = 'flex';
@@ -85,7 +96,8 @@ async function postAPI(endpoint, payload) {
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': window.CSRF_TOKEN || ''
             },
             body: JSON.stringify(payload)
         });
@@ -639,23 +651,23 @@ function displayAllPolicies(policies) {
 
             html += `
                 <tr data-index="${index}"
-                    data-category="${category}"
-                    data-type="${sourceType}"
-                    data-platform="${platform}"
+                    data-category="${escapeHtml(category)}"
+                    data-type="${escapeHtml(sourceType)}"
+                    data-platform="${escapeHtml(platform)}"
                     data-assignments="${assignmentCount}"
-                    data-name="${displayName.toLowerCase()}"
+                    data-name="${escapeHtml(displayName.toLowerCase())}"
                     data-created="${createdSort}"
-                    data-groups="${groupNamesStr}"
-                    onclick="viewPolicyDetails('${policyType}', '${policy.id}')" style="cursor: pointer;">
-                    <td><strong>${displayName}</strong></td>
-                    <td><span class="policy-badge badge-security" style="font-size: 12px;">${category}</span></td>
-                    <td>${sourceType}</td>
-                    <td>${platform}</td>
-                    <td>${assignmentText}</td>
-                    <td style="font-size: 12px; color: var(--text-secondary);">${createdText}</td>
+                    data-groups="${escapeHtml(groupNamesStr)}"
+                    onclick="viewPolicyDetails('${escapeHtml(policyType)}', '${escapeHtml(policy.id)}')" style="cursor: pointer;">
+                    <td><strong>${escapeHtml(displayName)}</strong></td>
+                    <td><span class="policy-badge badge-security" style="font-size: 12px;">${escapeHtml(category)}</span></td>
+                    <td>${escapeHtml(sourceType)}</td>
+                    <td>${escapeHtml(platform)}</td>
+                    <td>${escapeHtml(assignmentText)}</td>
+                    <td style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(createdText)}</td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
-                                onclick="event.stopPropagation(); viewPolicyDetails('${policyType}', '${policy.id}')">
+                                onclick="event.stopPropagation(); viewPolicyDetails('${escapeHtml(policyType)}', '${escapeHtml(policy.id)}')">
                             View
                         </button>
                     </td>
@@ -664,7 +676,7 @@ function displayAllPolicies(policies) {
         });
     } catch (error) {
         console.error('Error building table:', error);
-        resultsContent.innerHTML = `<p class="text-muted">Error displaying policies: ${error.message}</p>`;
+        resultsContent.innerHTML = `<p class="text-muted">Error displaying policies: ${escapeHtml(error.message)}</p>`;
         return;
     }
 
@@ -805,14 +817,14 @@ function createPolicyCard(policy, type, badgeClass) {
     const category = categorizePolicyType(policy);
 
     return `
-        <div class="policy-item" onclick="viewPolicyDetails('${policyType}', '${policy.id}')">
+        <div class="policy-item" onclick="viewPolicyDetails('${escapeHtml(policyType)}', '${escapeHtml(policy.id)}')">
             <div class="policy-header">
-                <div class="policy-name">${displayName}</div>
+                <div class="policy-name">${escapeHtml(displayName)}</div>
                 <div style="display: flex; gap: 8px;">
-                    <span class="policy-badge ${badgeClass}">${category}</span>
+                    <span class="policy-badge ${badgeClass}">${escapeHtml(category)}</span>
                 </div>
             </div>
-            <div class="policy-description">${description}</div>
+            <div class="policy-description">${escapeHtml(description)}</div>
         </div>
     `;
 }
@@ -825,7 +837,7 @@ async function viewPolicyDetails(policyType, policyId) {
         const displayName = policy.displayName || policy.name || 'Policy Details';
 
         let html = `
-            <h2>${displayName}</h2>
+            <h2>${escapeHtml(displayName)}</h2>
             <div style="margin-top: 20px;">
                 <h3>Information</h3>
                 <table class="data-table">
@@ -835,23 +847,23 @@ async function viewPolicyDetails(policyType, policyId) {
                     </tr>
                     <tr>
                         <td>ID</td>
-                        <td>${policy.id}</td>
+                        <td>${escapeHtml(policy.id)}</td>
                     </tr>
                     <tr>
                         <td>Display Name</td>
-                        <td>${displayName}</td>
+                        <td>${escapeHtml(displayName)}</td>
                     </tr>
                     <tr>
                         <td>Description</td>
-                        <td>${policy.description || 'N/A'}</td>
+                        <td>${escapeHtml(policy.description || 'N/A')}</td>
                     </tr>
                     <tr>
                         <td>Created</td>
-                        <td>${policy.createdDateTime || 'N/A'}</td>
+                        <td>${escapeHtml(policy.createdDateTime || 'N/A')}</td>
                     </tr>
                     <tr>
                         <td>Modified</td>
-                        <td>${policy.lastModifiedDateTime || 'N/A'}</td>
+                        <td>${escapeHtml(policy.lastModifiedDateTime || 'N/A')}</td>
                     </tr>
                 </table>
         `;
@@ -863,7 +875,7 @@ async function viewPolicyDetails(policyType, policyId) {
             policy.assignments.forEach(assignment => {
                 const groupName = assignment.groupName || assignment.target?.groupId || 'All Devices';
                 const targetType = assignment.target?.['@odata.type'] || 'N/A';
-                html += `<tr><td>${groupName}</td><td>${targetType}</td></tr>`;
+                html += `<tr><td>${escapeHtml(groupName)}</td><td>${escapeHtml(targetType)}</td></tr>`;
             });
             html += '</table>';
         }
@@ -871,7 +883,7 @@ async function viewPolicyDetails(policyType, policyId) {
         // Settings (simplified JSON view)
         html += '<h3 style="margin-top: 24px;">Settings</h3>';
         html += '<pre style="background: var(--darker-bg); padding: 16px; border-radius: 8px; overflow-x: auto; max-height: 300px;">';
-        html += JSON.stringify(policy, null, 2);
+        html += escapeHtml(JSON.stringify(policy, null, 2));
         html += '</pre>';
 
         html += '</div>';
@@ -906,14 +918,14 @@ function displayDevices(devices) {
     devices.forEach(device => {
         const lastSync = device.lastSyncDateTime ? new Date(device.lastSyncDateTime).toLocaleString() : 'N/A';
         html += `
-            <tr onclick="viewDeviceDetails('${device.id}')" style="cursor: pointer;">
-                <td><strong>${device.deviceName || 'Unknown'}</strong></td>
-                <td>${device.operatingSystem || 'N/A'}</td>
-                <td><span class="policy-badge" style="font-size: 12px;">${device.complianceState || 'Unknown'}</span></td>
-                <td style="font-size: 12px;">${lastSync}</td>
+            <tr onclick="viewDeviceDetails('${escapeHtml(device.id)}')" style="cursor: pointer;">
+                <td><strong>${escapeHtml(device.deviceName || 'Unknown')}</strong></td>
+                <td>${escapeHtml(device.operatingSystem || 'N/A')}</td>
+                <td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(device.complianceState || 'Unknown')}</span></td>
+                <td style="font-size: 12px;">${escapeHtml(lastSync)}</td>
                 <td>
                     <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
-                            onclick="event.stopPropagation(); viewDeviceDetails('${device.id}')">
+                            onclick="event.stopPropagation(); viewDeviceDetails('${escapeHtml(device.id)}')">
                         View Details
                     </button>
                 </td>
@@ -935,19 +947,19 @@ async function viewDeviceDetails(deviceId) {
         const groupMemberships = device.groupMemberships || [];
 
         let html = `
-            <h2>${deviceName}</h2>
+            <h2>${escapeHtml(deviceName)}</h2>
             <div style="margin-top: 20px;">
                 <h3>Device Information</h3>
                 <table class="data-table">
                     <tr><th>Property</th><th>Value</th></tr>
-                    <tr><td>Device Name</td><td>${device.deviceName || 'N/A'}</td></tr>
-                    <tr><td>Operating System</td><td>${device.operatingSystem || 'N/A'} ${device.osVersion || ''}</td></tr>
-                    <tr><td>Compliance State</td><td>${device.complianceState || 'Unknown'}</td></tr>
-                    <tr><td>Enrollment Date</td><td>${device.enrolledDateTime ? new Date(device.enrolledDateTime).toLocaleString() : 'N/A'}</td></tr>
-                    <tr><td>Last Sync</td><td>${device.lastSyncDateTime ? new Date(device.lastSyncDateTime).toLocaleString() : 'N/A'}</td></tr>
-                    <tr><td>Serial Number</td><td>${device.serialNumber || 'N/A'}</td></tr>
-                    <tr><td>Model</td><td>${device.model || 'N/A'}</td></tr>
-                    <tr><td>Manufacturer</td><td>${device.manufacturer || 'N/A'}</td></tr>
+                    <tr><td>Device Name</td><td>${escapeHtml(device.deviceName || 'N/A')}</td></tr>
+                    <tr><td>Operating System</td><td>${escapeHtml(device.operatingSystem || 'N/A')} ${escapeHtml(device.osVersion || '')}</td></tr>
+                    <tr><td>Compliance State</td><td>${escapeHtml(device.complianceState || 'Unknown')}</td></tr>
+                    <tr><td>Enrollment Date</td><td>${escapeHtml(device.enrolledDateTime ? new Date(device.enrolledDateTime).toLocaleString() : 'N/A')}</td></tr>
+                    <tr><td>Last Sync</td><td>${escapeHtml(device.lastSyncDateTime ? new Date(device.lastSyncDateTime).toLocaleString() : 'N/A')}</td></tr>
+                    <tr><td>Serial Number</td><td>${escapeHtml(device.serialNumber || 'N/A')}</td></tr>
+                    <tr><td>Model</td><td>${escapeHtml(device.model || 'N/A')}</td></tr>
+                    <tr><td>Manufacturer</td><td>${escapeHtml(device.manufacturer || 'N/A')}</td></tr>
                 </table>
 
                 <h3 style="margin-top: 24px;">Group Memberships (${groupMemberships.length})</h3>
@@ -956,7 +968,7 @@ async function viewDeviceDetails(deviceId) {
         if (groupMemberships.length > 0) {
             html += '<table class="data-table"><tr><th>Group Name</th></tr>';
             groupMemberships.forEach(group => {
-                html += `<tr><td>${group.displayName}</td></tr>`;
+                html += `<tr><td>${escapeHtml(group.displayName)}</td></tr>`;
             });
             html += '</table>';
         } else {
@@ -973,9 +985,9 @@ async function viewDeviceDetails(deviceId) {
                 const assignedGroups = policy.assignedGroups.join(', ') || 'Direct Assignment';
                 html += `
                     <tr>
-                        <td><strong>${policy.name}</strong></td>
-                        <td><span class="policy-badge" style="font-size: 12px;">${policy.type}</span></td>
-                        <td style="font-size: 12px;">${assignedGroups}</td>
+                        <td><strong>${escapeHtml(policy.name)}</strong></td>
+                        <td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(policy.type)}</span></td>
+                        <td style="font-size: 12px;">${escapeHtml(assignedGroups)}</td>
                     </tr>
                 `;
             });
@@ -1020,15 +1032,15 @@ function displayMachines(machines) {
         const lastSeen = machine.lastSeen ? new Date(machine.lastSeen).toLocaleString() : 'N/A';
 
         html += `
-            <tr onclick="viewMachineDetails('${machine.id}')" style="cursor: pointer;">
-                <td><strong>${machine.computerDnsName || 'Unknown'}</strong></td>
-                <td>${machine.osPlatform || 'N/A'}</td>
-                <td><span class="policy-badge" style="font-size: 12px;">${onboardingStatus}</span></td>
-                <td><span class="policy-badge" style="font-size: 12px;">${healthStatus}</span></td>
-                <td>${riskScore}</td>
+            <tr onclick="viewMachineDetails('${escapeHtml(machine.id)}')" style="cursor: pointer;">
+                <td><strong>${escapeHtml(machine.computerDnsName || 'Unknown')}</strong></td>
+                <td>${escapeHtml(machine.osPlatform || 'N/A')}</td>
+                <td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(onboardingStatus)}</span></td>
+                <td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(healthStatus)}</span></td>
+                <td>${escapeHtml(riskScore)}</td>
                 <td>
                     <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;"
-                            onclick="event.stopPropagation(); viewMachineDetails('${machine.id}')">
+                            onclick="event.stopPropagation(); viewMachineDetails('${escapeHtml(machine.id)}')">
                         View Details
                     </button>
                 </td>
@@ -1051,22 +1063,22 @@ async function viewMachineDetails(machineId) {
         const intuneDeviceFound = machine.intuneDeviceFound || false;
 
         let html = `
-            <h2>${machineName}</h2>
+            <h2>${escapeHtml(machineName)}</h2>
             <div style="margin-top: 20px;">
                 <h3>Machine Information</h3>
                 <table class="data-table">
                     <tr><th>Property</th><th>Value</th></tr>
-                    <tr><td>Computer Name</td><td>${machine.computerDnsName || 'N/A'}</td></tr>
-                    <tr><td>OS Platform</td><td>${machine.osPlatform || 'N/A'}</td></tr>
-                    <tr><td>OS Version</td><td>${machine.osVersion || 'N/A'}</td></tr>
-                    <tr><td>Onboarding Status</td><td><span class="policy-badge" style="font-size: 12px;">${machine.onboardingStatus || 'Unknown'}</span></td></tr>
-                    <tr><td>Health Status</td><td><span class="policy-badge" style="font-size: 12px;">${machine.healthStatus || 'Unknown'}</span></td></tr>
-                    <tr><td>Risk Score</td><td>${machine.riskScore || 'N/A'}</td></tr>
-                    <tr><td>Exposure Level</td><td>${machine.exposureLevel || 'N/A'}</td></tr>
-                    <tr><td>Last Seen</td><td>${machine.lastSeen ? new Date(machine.lastSeen).toLocaleString() : 'N/A'}</td></tr>
-                    <tr><td>First Seen</td><td>${machine.firstSeen ? new Date(machine.firstSeen).toLocaleString() : 'N/A'}</td></tr>
-                    <tr><td>IP Addresses</td><td>${machine.ipAddresses ? machine.ipAddresses.join(', ') : 'N/A'}</td></tr>
-                    <tr><td>Machine Tags</td><td>${machine.machineTags ? machine.machineTags.join(', ') : 'None'}</td></tr>
+                    <tr><td>Computer Name</td><td>${escapeHtml(machine.computerDnsName || 'N/A')}</td></tr>
+                    <tr><td>OS Platform</td><td>${escapeHtml(machine.osPlatform || 'N/A')}</td></tr>
+                    <tr><td>OS Version</td><td>${escapeHtml(machine.osVersion || 'N/A')}</td></tr>
+                    <tr><td>Onboarding Status</td><td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(machine.onboardingStatus || 'Unknown')}</span></td></tr>
+                    <tr><td>Health Status</td><td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(machine.healthStatus || 'Unknown')}</span></td></tr>
+                    <tr><td>Risk Score</td><td>${escapeHtml(machine.riskScore || 'N/A')}</td></tr>
+                    <tr><td>Exposure Level</td><td>${escapeHtml(machine.exposureLevel || 'N/A')}</td></tr>
+                    <tr><td>Last Seen</td><td>${escapeHtml(machine.lastSeen ? new Date(machine.lastSeen).toLocaleString() : 'N/A')}</td></tr>
+                    <tr><td>First Seen</td><td>${escapeHtml(machine.firstSeen ? new Date(machine.firstSeen).toLocaleString() : 'N/A')}</td></tr>
+                    <tr><td>IP Addresses</td><td>${escapeHtml(machine.ipAddresses ? machine.ipAddresses.join(', ') : 'N/A')}</td></tr>
+                    <tr><td>Machine Tags</td><td>${escapeHtml(machine.machineTags ? machine.machineTags.join(', ') : 'None')}</td></tr>
                 </table>
         `;
 
@@ -1081,7 +1093,7 @@ async function viewMachineDetails(machineId) {
         if (groupMemberships.length > 0) {
             html += '<table class="data-table"><tr><th>Group Name</th></tr>';
             groupMemberships.forEach(group => {
-                html += `<tr><td>${group.displayName}</td></tr>`;
+                html += `<tr><td>${escapeHtml(group.displayName)}</td></tr>`;
             });
             html += '</table>';
         } else {
@@ -1098,9 +1110,9 @@ async function viewMachineDetails(machineId) {
                 const assignedGroups = policy.assignedGroups.join(', ') || 'Direct Assignment';
                 html += `
                     <tr>
-                        <td><strong>${policy.name}</strong></td>
-                        <td><span class="policy-badge" style="font-size: 12px;">${policy.type}</span></td>
-                        <td style="font-size: 12px;">${assignedGroups}</td>
+                        <td><strong>${escapeHtml(policy.name)}</strong></td>
+                        <td><span class="policy-badge" style="font-size: 12px;">${escapeHtml(policy.type)}</span></td>
+                        <td style="font-size: 12px;">${escapeHtml(assignedGroups)}</td>
                     </tr>
                 `;
             });
@@ -1140,10 +1152,10 @@ function displayAlerts(alerts) {
     alerts.forEach(alert => {
         html += `
             <tr>
-                <td>${alert.title || 'Unknown'}</td>
-                <td>${alert.severity || 'N/A'}</td>
-                <td>${alert.status || 'Unknown'}</td>
-                <td>${alert.createdDateTime || 'N/A'}</td>
+                <td>${escapeHtml(alert.title || 'Unknown')}</td>
+                <td>${escapeHtml(alert.severity || 'N/A')}</td>
+                <td>${escapeHtml(alert.status || 'Unknown')}</td>
+                <td>${escapeHtml(alert.createdDateTime || 'N/A')}</td>
             </tr>
         `;
     });
@@ -1203,14 +1215,14 @@ function displayQueryResults(data) {
     html += '<table class="data-table"><tr>';
 
     columns.forEach(col => {
-        html += `<th>${col}</th>`;
+        html += `<th>${escapeHtml(col)}</th>`;
     });
     html += '</tr>';
 
     data.data.forEach(row => {
         html += '<tr>';
         columns.forEach(col => {
-            html += `<td>${row[col] !== null && row[col] !== undefined ? row[col] : 'N/A'}</td>`;
+            html += `<td>${escapeHtml(row[col] !== null && row[col] !== undefined ? row[col] : 'N/A')}</td>`;
         });
         html += '</tr>';
     });

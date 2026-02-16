@@ -28,7 +28,7 @@ class Config:
     DEFENDER_API_SCOPE = ['https://api.securitycenter.microsoft.com/.default']
 
     # Flask Configuration
-    SECRET_KEY = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
+    SECRET_KEY = os.getenv('FLASK_SECRET_KEY')
     DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     PORT = int(os.getenv('PORT', 5000))
 
@@ -42,7 +42,7 @@ class Config:
     @staticmethod
     def validate():
         """Validate required configuration"""
-        required_vars = ['TENANT_ID', 'CLIENT_ID', 'CLIENT_SECRET']
+        required_vars = ['TENANT_ID', 'CLIENT_ID', 'CLIENT_SECRET', 'FLASK_SECRET_KEY']
         missing = [var for var in required_vars if not os.getenv(var)]
 
         if missing:

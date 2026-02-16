@@ -1,9 +1,12 @@
 """
 Microsoft Graph API Client for Endpoint Policies
 """
+import logging
 import requests
 from config import Config
 from modules.auth import AuthenticationManager
+
+logger = logging.getLogger(__name__)
 
 
 class GraphClient:
@@ -116,7 +119,7 @@ class GraphClient:
                         all_responses[req_id] = None
 
             except Exception as e:
-                print(f"Warning: Batch request failed: {str(e)}")
+                logger.warning("Batch request failed: %s", str(e))
                 # Set all requests in this batch to None
                 for req in batch:
                     all_responses[req['id']] = None
@@ -166,7 +169,7 @@ class GraphClient:
                         all_responses[req_id] = None
 
             except Exception as e:
-                print(f"Warning: Beta batch request failed: {str(e)}")
+                logger.warning("Beta batch request failed: %s", str(e))
                 for req in batch:
                     all_responses[req['id']] = None
 
@@ -236,9 +239,9 @@ class GraphClient:
         # Method 1: Get from deviceConfigurations (PRIMARY SOURCE - Graph REST 1.0)
         # This is where windows10EndpointProtectionConfiguration objects live
         try:
-            print("Attempting to retrieve endpoint security policies from deviceConfigurations...")
+            logger.debug("Retrieving endpoint security policies from deviceConfigurations...")
             all_configs = self._get_all_pages('/deviceManagement/deviceConfigurations')
-            print(f"DEBUG: Found {len(all_configs)} total device configurations")
+            logger.debug("Found %d total device configurations", len(all_configs))
 
             # Look for endpoint protection configurations
             security_configs = []
@@ -246,69 +249,67 @@ class GraphClient:
                 config_type = config.get('@odata.type', '')
                 display_name = config.get('displayName', '')
 
-                print(f"DEBUG: Checking config '{display_name}' with type '{config_type}'")
+                logger.debug("Checking config '%s' with type '%s'", display_name, config_type)
 
                 # Check for windows10EndpointProtectionConfiguration (the main type for endpoint security)
                 if config_type == '#microsoft.graph.windows10EndpointProtectionConfiguration':
                     config['policySource'] = 'windows10EndpointProtectionConfiguration'
                     security_configs.append(config)
-                    print(f"  ✓ Found endpoint protection config: {display_name}")
+                    logger.debug("Found endpoint protection config: %s", display_name)
                 # Also check for other endpoint security related types
                 elif any(keyword in config_type.lower() for keyword in
                         ['endpointprotection', 'firewall', 'defender', 'antivirus', 'security']):
                     config['policySource'] = 'deviceConfigurations'
                     security_configs.append(config)
-                    print(f"  ✓ Found security config: {display_name} ({config_type})")
+                    logger.debug("Found security config: %s (%s)", display_name, config_type)
 
-            print(f"Retrieved {len(security_configs)} endpoint security policies from deviceConfigurations")
+            logger.debug("Retrieved %d endpoint security policies from deviceConfigurations", len(security_configs))
             all_policies.extend(security_configs)
 
         except Exception as e:
-            print(f"ERROR retrieving from deviceConfigurations: {str(e)}")
+            logger.error("Error retrieving from deviceConfigurations: %s", str(e))
 
         # Method 2: Get from intents endpoint (beta) - newer style policies
         try:
-            print("\nAttempting to retrieve from intents (beta)...")
+            logger.debug("Retrieving from intents (beta)...")
             intents = self._get_all_pages('/deviceManagement/intents', use_beta=True)
-            print(f"DEBUG: Found {len(intents)} intents")
+            logger.debug("Found %d intents", len(intents))
 
             # Get detailed info for each intent
             for idx, intent in enumerate(intents):
                 try:
-                    print(f"DEBUG: Processing intent {idx + 1}/{len(intents)}: {intent.get('displayName', 'Unknown')}")
+                    logger.debug("Processing intent %d/%d: %s", idx + 1, len(intents), intent.get('displayName', 'Unknown'))
                     detailed_intent = self.get_intent_by_id(intent['id'])
                     detailed_intent['policySource'] = 'intents'
                     all_policies.append(detailed_intent)
                 except Exception as e:
-                    print(f"Warning: Could not get details for intent {intent.get('id')}: {str(e)}")
+                    logger.warning("Could not get details for intent %s: %s", intent.get('id'), str(e))
                     intent['policySource'] = 'intents'
                     all_policies.append(intent)
 
-            print(f"Retrieved {len(intents)} policies from intents")
+            logger.debug("Retrieved %d policies from intents", len(intents))
 
         except Exception as e:
-            print(f"Intents endpoint failed: {str(e)}")
+            logger.warning("Intents endpoint failed: %s", str(e))
 
         # Method 3: Try configuration policies from beta (Settings Catalog)
         try:
-            print("\nAttempting to retrieve from configurationPolicies (beta)...")
+            logger.debug("Retrieving from configurationPolicies (beta)...")
             config_policies = self._get_all_pages('/deviceManagement/configurationPolicies', use_beta=True)
-            print(f"DEBUG: Found {len(config_policies)} configuration policies")
+            logger.debug("Found %d configuration policies", len(config_policies))
 
             # Add all configuration policies (Settings Catalog)
             for policy in config_policies:
                 policy['policySource'] = 'configurationPolicies'
                 all_policies.append(policy)
-                print(f"  ✓ Found Settings Catalog policy: {policy.get('name', 'Unknown')}")
+                logger.debug("Found Settings Catalog policy: %s", policy.get('name', 'Unknown'))
 
-            print(f"Retrieved {len(config_policies)} policies from configurationPolicies")
+            logger.debug("Retrieved %d policies from configurationPolicies", len(config_policies))
 
         except Exception as e:
-            print(f"Configuration policies (beta) failed: {str(e)}")
+            logger.warning("Configuration policies (beta) failed: %s", str(e))
 
-        print(f"\n{'='*60}")
-        print(f"TOTAL: Retrieved {len(all_policies)} endpoint security policies from all sources")
-        print(f"{'='*60}\n")
+        logger.info("Retrieved %d endpoint security policies from all sources", len(all_policies))
 
         return all_policies
 
@@ -343,7 +344,7 @@ class GraphClient:
                             'settings': settings.get('value', [])
                         })
                     except Exception as e:
-                        print(f"Could not get settings for category {category.get('id')}: {str(e)}")
+                        logger.warning("Could not get settings for category %s: %s", category.get('id'), str(e))
 
             except:
                 intent['categories'] = []
@@ -435,7 +436,7 @@ class GraphClient:
                         if group.get('@odata.type') == '#microsoft.graph.group'
                     ]
                 except Exception as e:
-                    print(f"Warning: Could not fetch group memberships: {str(e)}")
+                    logger.warning("Could not fetch group memberships: %s", str(e))
                     device['groupMemberships'] = []
             else:
                 device['groupMemberships'] = []
@@ -618,14 +619,14 @@ class GraphClient:
             compliance_policies = self.get_device_compliance_policies()
             policies['compliance_policies'] = self._add_assignment_counts(compliance_policies, 'compliance')
         except Exception as e:
-            print(f"Warning: Could not retrieve compliance policies: {str(e)}")
+            logger.warning("Could not retrieve compliance policies: %s", str(e))
             policies['compliance_policies'] = []
 
         try:
             config_policies = self.get_device_configurations()
             policies['configuration_policies'] = self._add_assignment_counts(config_policies, 'configuration')
         except Exception as e:
-            print(f"Warning: Could not retrieve configuration policies: {str(e)}")
+            logger.warning("Could not retrieve configuration policies: %s", str(e))
             policies['configuration_policies'] = []
 
         try:
@@ -634,26 +635,26 @@ class GraphClient:
             intents = self.get_intents()
             policies['endpoint_security_intents'] = self._add_assignment_counts(intents)
         except Exception as e:
-            print(f"Warning: Could not retrieve endpoint security intents: {str(e)}")
+            logger.warning("Could not retrieve endpoint security intents: %s", str(e))
             policies['endpoint_security_intents'] = []
 
         try:
             config_profiles = self.get_configuration_policies()
             policies['configuration_profiles'] = self._add_assignment_counts(config_profiles, 'configuration_profile')
         except Exception as e:
-            print(f"Warning: Could not retrieve configuration profiles: {str(e)}")
+            logger.warning("Could not retrieve configuration profiles: %s", str(e))
             policies['configuration_profiles'] = []
 
         try:
             policies['device_scripts'] = self.get_device_management_scripts()
         except Exception as e:
-            print(f"Warning: Could not retrieve device scripts: {str(e)}")
+            logger.warning("Could not retrieve device scripts: %s", str(e))
             policies['device_scripts'] = []
 
         try:
             policies['health_scripts'] = self.get_device_health_scripts()
         except Exception as e:
-            print(f"Warning: Could not retrieve health scripts: {str(e)}")
+            logger.warning("Could not retrieve health scripts: %s", str(e))
             policies['health_scripts'] = []
 
         return policies
