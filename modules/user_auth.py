@@ -3,6 +3,7 @@ User Authentication module using MSAL for interactive login
 """
 import msal
 from flask import session, url_for
+from urllib.parse import quote
 from config import Config
 
 
@@ -101,5 +102,5 @@ class UserAuthManager:
         """
         return (
             f"{self.authority}/oauth2/v2.0/logout"
-            f"?post_logout_redirect_uri={post_logout_redirect_uri}"
+            f"?post_logout_redirect_uri={quote(post_logout_redirect_uri, safe='')}"
         )

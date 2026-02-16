@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Defender XDR Endpoint Policy Manager{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3IZ80rvpDYGFnkFk1LBEdzfQv/E8kcHK1YY" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-K2ByMIZOHbMpPiFaQIkxI7Rx6dNLpidJJLihC/sFMn1kW8dSQvMYpWeABHCMiHYG" crossorigin="anonymous"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -141,6 +141,10 @@
         <div class="spinner"></div>
     </div>
 
+    <script>
+        // CSRF token for POST requests (VULN-06)
+        window.CSRF_TOKEN = "{{ csrf_token | default('', true) }}";
+    </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
