@@ -6,6 +6,7 @@ let allPoliciesData = null;
 // Theme Management
 function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
+    console.log('Initializing theme:', savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 }
@@ -25,8 +26,12 @@ function toggleTheme() {
 
 function updateThemeIcon(theme) {
     const icon = document.getElementById('themeIcon');
+    console.log('Updating theme icon:', theme, 'Icon element:', icon);
     if (icon) {
         icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        console.log('Icon class set to:', icon.className);
+    } else {
+        console.error('Theme icon element not found!');
     }
 }
 
@@ -51,9 +56,15 @@ function closeMobileMenu() {
     toggle.classList.remove('active');
 }
 
-// Initialize theme on page load
+// Initialize theme and dashboard on page load
 document.addEventListener('DOMContentLoaded', function() {
     initTheme();
+
+    // Load dashboard if we're on the home page
+    const dashboardSection = document.getElementById('dashboardSection');
+    if (dashboardSection) {
+        loadDashboard();
+    }
 });
 
 // Utility Functions
@@ -166,22 +177,34 @@ async function postAPI(endpoint, payload) {
 // Dashboard Functions
 async function loadDashboard() {
     try {
+        console.log('Loading dashboard...');
         const data = await fetchAPI('/api/policies');
+        console.log('Dashboard data loaded:', data);
         allPoliciesData = data;
 
         // Update stats
-        document.getElementById('compliancePolicyCount').textContent = data.counts.compliance_policies;
-        document.getElementById('configPolicyCount').textContent = data.counts.configuration_policies;
-        document.getElementById('securityPolicyCount').textContent = data.counts.endpoint_security_intents;
+        if (data.counts) {
+            document.getElementById('compliancePolicyCount').textContent = data.counts.compliance_policies || 0;
+            document.getElementById('configPolicyCount').textContent = data.counts.configuration_policies || 0;
+            document.getElementById('securityPolicyCount').textContent = data.counts.endpoint_security_intents || 0;
+        } else {
+            console.error('No counts data in response');
+        }
 
         // Load device count
         loadDeviceCount();
 
         // Create dashboard charts
-        createDashboardCharts(data.data);
+        if (data.data) {
+            createDashboardCharts(data.data);
+        } else {
+            console.error('No policy data in response');
+        }
 
     } catch (error) {
         console.error('Failed to load dashboard:', error);
+        // Show error to user
+        showError('Failed to load dashboard: ' + error.message);
     }
 }
 
