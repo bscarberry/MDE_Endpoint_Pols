@@ -23,6 +23,43 @@
     --text-secondary: #9ca3af;
     --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     --glow-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+    --bg-primary: #030712;
+    --bg-secondary: #111827;
+    --bg-card: rgba(17, 24, 39, 0.5);
+    --border-color: #1f2937;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+    --terminal-green: #059669;
+    --terminal-green-dark: #047857;
+    --terminal-green-light: #10b981;
+    --success-color: #10b981;
+    --warning-color: #d97706;
+    --danger-color: #dc2626;
+    --gray-950: #f9fafb;
+    --gray-900: #f3f4f6;
+    --gray-800: #e5e7eb;
+    --gray-700: #d1d5db;
+    --gray-600: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-400: #4b5563;
+    --gray-300: #374151;
+    --gray-100: #1f2937;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --glow-shadow: 0 0 15px rgba(5, 150, 105, 0.15);
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-card: rgba(255, 255, 255, 0.8);
+    --border-color: #e5e7eb;
+}
+
+[data-theme="light"] body {
+    background-image:
+        linear-gradient(rgba(5, 150, 105, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(5, 150, 105, 0.03) 1px, transparent 1px);
 }
 
 * {
@@ -820,4 +857,289 @@ body {
 
 .data-table thead th[onclick] {
     transition: background-color 0.2s ease;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    border-color: var(--terminal-green);
+    box-shadow: var(--glow-shadow);
+}
+
+.theme-toggle i {
+    font-size: 20px;
+    color: var(--terminal-green);
+}
+
+/* Mobile Menu Toggle */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 48px;
+    height: 48px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    backdrop-filter: blur(12px);
+    z-index: 1001;
+    cursor: pointer;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.mobile-menu-toggle span {
+    width: 24px;
+    height: 2px;
+    background: var(--terminal-green);
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 1024px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease;
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 80px 16px 24px;
+    }
+
+    .top-bar {
+        margin-left: 0;
+        padding: 12px 16px 12px 72px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .chart-card canvas {
+        max-height: 250px;
+    }
+
+    .hero-title {
+        font-size: 42px;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .hero-actions button {
+        width: 100%;
+    }
+
+    .theme-toggle {
+        bottom: 16px;
+        right: 16px;
+        width: 48px;
+        height: 48px;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+        padding: 24px 16px;
+    }
+
+    .stat-number {
+        font-size: 36px;
+    }
+
+    .hero-title {
+        font-size: 36px;
+    }
+
+    .hero-subtitle {
+        font-size: 14px;
+    }
+
+    /* Make tables scrollable on mobile */
+    .data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table thead, .data-table tbody {
+        display: table;
+        width: 100%;
+    }
+
+    .filter-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .modal {
+        padding: 16px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+        padding: 20px;
+    }
+
+    .modal-close {
+        top: 12px;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+    }
+
+    .top-bar nav {
+        gap: 12px;
+    }
+
+    .top-bar nav a {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 72px 12px 16px;
+    }
+
+    .hero-section {
+        padding: 32px 16px;
+    }
+
+    .hero-title {
+        font-size: 28px;
+    }
+
+    .content-section {
+        padding: 16px;
+    }
+
+    .chart-card {
+        padding: 16px;
+    }
+
+    .stat-card {
+        padding: 20px 12px;
+    }
+
+    .btn-primary, .btn-secondary {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .theme-toggle {
+        width: 44px;
+        height: 44px;
+    }
+
+    .theme-toggle i {
+        font-size: 18px;
+    }
+
+    .top-bar nav {
+        display: none;
+    }
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+}
+
+@media (max-width: 1024px) {
+    .mobile-overlay.active {
+        display: block;
+    }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    /* Increase touch target sizes */
+    .btn-primary, .btn-secondary {
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+
+    .nav-item {
+        min-height: 48px;
+        padding: 12px 20px;
+    }
+
+    .data-table tbody tr {
+        min-height: 48px;
+    }
+
+    button {
+        min-height: 44px;
+    }
 }

@@ -3,6 +3,54 @@
 // Global state
 let allPoliciesData = null;
 
+// Theme Management
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+        icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+}
+
+// Mobile Menu Management
+function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    const toggle = document.querySelector('.mobile-menu-toggle');
+
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+    toggle.classList.toggle('active');
+}
+
+function closeMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    const toggle = document.querySelector('.mobile-menu-toggle');
+
+    sidebar.classList.remove('active');
+    overlay.classList.remove('active');
+    toggle.classList.remove('active');
+}
+
+// Initialize theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initTheme();
+});
+
 // Utility Functions
 function showLoading() {
     document.getElementById('loadingSpinner').style.display = 'flex';
@@ -29,6 +77,9 @@ function closeModal() {
 
 // View Management
 function showDashboard() {
+    // Close mobile menu if open
+    closeMobileMenu();
+
     // Show dashboard
     document.getElementById('dashboardSection').style.display = 'block';
 
@@ -41,6 +92,9 @@ function showDashboard() {
 }
 
 function showResultsSection() {
+    // Close mobile menu if open
+    closeMobileMenu();
+
     // Hide dashboard
     document.getElementById('dashboardSection').style.display = 'none';
 
@@ -1154,6 +1208,9 @@ function displayAlerts(alerts) {
 
 // Query Functions
 function showQueryBuilder() {
+    // Close mobile menu if open
+    closeMobileMenu();
+
     // Hide dashboard
     document.getElementById('dashboardSection').style.display = 'none';
 
