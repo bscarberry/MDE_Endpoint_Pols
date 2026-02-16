@@ -9,14 +9,8 @@ app.config['ENV'] = 'production'
 app.config['DEBUG'] = False
 app.config['TESTING'] = False
 
-# Security headers
-@app.after_request
-def add_security_headers(response):
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    return response
+# Security headers are now set in app.py via @app.after_request
+# so they apply regardless of entry point (VULN-12 fix)
 
 if __name__ == '__main__':
     # This won't be called in production, but useful for testing

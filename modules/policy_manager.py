@@ -1,9 +1,12 @@
 """
 Policy Manager - Coordinates policy retrieval and formatting
 """
+import logging
 from modules.auth import AuthenticationManager
 from modules.graph_client import GraphClient
 from modules.defender_client import DefenderClient
+
+logger = logging.getLogger(__name__)
 
 
 class PolicyManager:
@@ -182,7 +185,7 @@ class PolicyManager:
                                 intune_device = device
                                 break
             except Exception as e:
-                print(f"Warning: Could not find matching Intune device: {str(e)}")
+                logger.warning("Could not find matching Intune device: %s", str(e))
 
             # If we found matching Intune device, get its policies
             assigned_policies = []
