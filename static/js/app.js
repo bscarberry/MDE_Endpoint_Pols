@@ -14,6 +14,59 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// Theme Management
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+
+    // Recreate charts with new theme colors
+    if (allPoliciesData && allPoliciesData.data) {
+        createDashboardCharts(allPoliciesData.data);
+    }
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+        icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+}
+
+// Mobile Menu Management
+function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    const toggle = document.querySelector('.mobile-menu-toggle');
+
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+    toggle.classList.toggle('active');
+}
+
+function closeMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    const toggle = document.querySelector('.mobile-menu-toggle');
+
+    sidebar.classList.remove('active');
+    overlay.classList.remove('active');
+    toggle.classList.remove('active');
+}
+
+// Initialize theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initTheme();
+});
+
 // Utility Functions
 function showLoading() {
     document.getElementById('loadingSpinner').style.display = 'flex';
@@ -40,6 +93,9 @@ function closeModal() {
 
 // View Management
 function showDashboard() {
+    // Close mobile menu if open
+    closeMobileMenu();
+
     // Show dashboard
     document.getElementById('dashboardSection').style.display = 'block';
 
@@ -52,6 +108,9 @@ function showDashboard() {
 }
 
 function showResultsSection() {
+    // Close mobile menu if open
+    closeMobileMenu();
+
     // Hide dashboard
     document.getElementById('dashboardSection').style.display = 'none';
 
@@ -156,6 +215,47 @@ let dashboardCharts = {
     type: null
 };
 
+// Get theme-aware colors
+function getChartColors() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const isLight = theme === 'light';
+
+    return {
+        green: isLight ? '#047857' : '#10b981',
+        blue: isLight ? '#0369a1' : '#3b82f6',
+        orange: isLight ? '#c2410c' : '#f59e0b',
+        red: isLight ? '#b91c1c' : '#ef4444',
+        purple: isLight ? '#7c3aed' : '#8b5cf6',
+        pink: isLight ? '#be185d' : '#ec4899',
+        teal: isLight ? '#0f766e' : '#14b8a6',
+        amber: isLight ? '#d97706' : '#fb923c',
+        gray: isLight ? '#64748b' : '#6b7280',
+        gridColor: isLight ? 'rgba(226, 232, 240, 0.3)' : 'rgba(107, 114, 128, 0.1)',
+        textColor: isLight ? '#475569' : '#9ca3af',
+        tooltipBg: isLight ? '#ffffff' : '#111827',
+        tooltipBorder: isLight ? '#e2e8f0' : '#374151',
+        backgroundColor: isLight ? [
+            'rgba(4, 120, 87, 0.8)',
+            'rgba(3, 105, 161, 0.8)',
+            'rgba(194, 65, 12, 0.8)',
+            'rgba(185, 28, 28, 0.8)',
+            'rgba(124, 58, 237, 0.8)',
+            'rgba(190, 24, 93, 0.8)',
+            'rgba(15, 118, 110, 0.8)',
+            'rgba(217, 119, 6, 0.8)'
+        ] : [
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+            'rgba(139, 92, 246, 0.8)',
+            'rgba(236, 72, 153, 0.8)',
+            'rgba(20, 184, 166, 0.8)',
+            'rgba(251, 146, 60, 0.8)'
+        ]
+    };
+}
+
 function createDashboardCharts(policies) {
     // Destroy existing charts
     Object.values(dashboardCharts).forEach(chart => {
@@ -188,6 +288,7 @@ function createDashboardCharts(policies) {
 
 function createCategoryChart(policies) {
     const categoryCounts = {};
+    const colors = getChartColors();
 
     policies.forEach(policy => {
         const category = categorizePolicyType(policy);
@@ -203,17 +304,8 @@ function createCategoryChart(policies) {
             labels: Object.keys(categoryCounts),
             datasets: [{
                 data: Object.values(categoryCounts),
-                backgroundColor: [
-                    'rgba(16, 185, 129, 0.8)',
-                    'rgba(59, 130, 246, 0.8)',
-                    'rgba(245, 158, 11, 0.8)',
-                    'rgba(239, 68, 68, 0.8)',
-                    'rgba(139, 92, 246, 0.8)',
-                    'rgba(236, 72, 153, 0.8)',
-                    'rgba(34, 197, 94, 0.8)',
-                    'rgba(251, 146, 60, 0.8)'
-                ],
-                borderColor: '#1f2937',
+                backgroundColor: colors.backgroundColor,
+                borderColor: colors.tooltipBorder,
                 borderWidth: 2
             }]
         },
@@ -224,7 +316,7 @@ function createCategoryChart(policies) {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        color: '#9ca3af',
+                        color: colors.textColor,
                         font: {
                             family: 'JetBrains Mono',
                             size: 11
@@ -233,10 +325,10 @@ function createCategoryChart(policies) {
                     }
                 },
                 tooltip: {
-                    backgroundColor: '#111827',
-                    titleColor: '#10b981',
-                    bodyColor: '#f3f4f6',
-                    borderColor: '#374151',
+                    backgroundColor: colors.tooltipBg,
+                    titleColor: colors.green,
+                    bodyColor: colors.textColor,
+                    borderColor: colors.tooltipBorder,
                     borderWidth: 1,
                     titleFont: {
                         family: 'JetBrains Mono'
@@ -251,6 +343,7 @@ function createCategoryChart(policies) {
 }
 
 function createAssignmentChart(policies) {
+    const colors = getChartColors();
     let assigned = 0;
     let unassigned = 0;
 
@@ -266,17 +359,17 @@ function createAssignmentChart(policies) {
     const ctx = document.getElementById('assignmentChart');
     if (!ctx) return null;
 
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const grayColor = theme === 'light' ? 'rgba(100, 116, 139, 0.5)' : 'rgba(107, 114, 128, 0.5)';
+
     return new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Assigned', 'Unassigned'],
             datasets: [{
                 data: [assigned, unassigned],
-                backgroundColor: [
-                    'rgba(16, 185, 129, 0.8)',
-                    'rgba(107, 114, 128, 0.5)'
-                ],
-                borderColor: '#1f2937',
+                backgroundColor: [colors.backgroundColor[0], grayColor],
+                borderColor: colors.tooltipBorder,
                 borderWidth: 2
             }]
         },
@@ -287,7 +380,7 @@ function createAssignmentChart(policies) {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        color: '#9ca3af',
+                        color: colors.textColor,
                         font: {
                             family: 'JetBrains Mono',
                             size: 11
@@ -296,10 +389,10 @@ function createAssignmentChart(policies) {
                     }
                 },
                 tooltip: {
-                    backgroundColor: '#111827',
-                    titleColor: '#10b981',
-                    bodyColor: '#f3f4f6',
-                    borderColor: '#374151',
+                    backgroundColor: colors.tooltipBg,
+                    titleColor: colors.green,
+                    bodyColor: colors.textColor,
+                    borderColor: colors.tooltipBorder,
                     borderWidth: 1,
                     titleFont: {
                         family: 'JetBrains Mono'
@@ -314,6 +407,7 @@ function createAssignmentChart(policies) {
 }
 
 function createPlatformChart(policies) {
+    const colors = getChartColors();
     const platformCounts = {};
 
     policies.forEach(policy => {
@@ -331,8 +425,8 @@ function createPlatformChart(policies) {
             datasets: [{
                 label: 'Policies',
                 data: Object.values(platformCounts),
-                backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                borderColor: 'rgba(16, 185, 129, 1)',
+                backgroundColor: colors.backgroundColor[0],
+                borderColor: colors.green,
                 borderWidth: 1
             }]
         },
@@ -343,19 +437,19 @@ function createPlatformChart(policies) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        color: '#9ca3af',
+                        color: colors.textColor,
                         font: {
                             family: 'JetBrains Mono'
                         },
                         stepSize: 1
                     },
                     grid: {
-                        color: 'rgba(107, 114, 128, 0.1)'
+                        color: colors.gridColor
                     }
                 },
                 x: {
                     ticks: {
-                        color: '#9ca3af',
+                        color: colors.textColor,
                         font: {
                             family: 'JetBrains Mono',
                             size: 10
@@ -371,10 +465,10 @@ function createPlatformChart(policies) {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: '#111827',
-                    titleColor: '#10b981',
-                    bodyColor: '#f3f4f6',
-                    borderColor: '#374151',
+                    backgroundColor: colors.tooltipBg,
+                    titleColor: colors.green,
+                    bodyColor: colors.textColor,
+                    borderColor: colors.tooltipBorder,
                     borderWidth: 1,
                     titleFont: {
                         family: 'JetBrains Mono'
@@ -389,6 +483,7 @@ function createPlatformChart(policies) {
 }
 
 function createTypeChart(policies) {
+    const colors = getChartColors();
     const typeCounts = {
         'Compliance': policies.compliance_policies?.length || 0,
         'Configuration': policies.configuration_policies?.length || 0,
@@ -407,16 +502,16 @@ function createTypeChart(policies) {
                 label: 'Policies',
                 data: Object.values(typeCounts),
                 backgroundColor: [
-                    'rgba(59, 130, 246, 0.8)',
-                    'rgba(16, 185, 129, 0.8)',
-                    'rgba(239, 68, 68, 0.8)',
-                    'rgba(245, 158, 11, 0.8)'
+                    colors.blue,
+                    colors.green,
+                    colors.red,
+                    colors.orange
                 ],
                 borderColor: [
-                    'rgba(59, 130, 246, 1)',
-                    'rgba(16, 185, 129, 1)',
-                    'rgba(239, 68, 68, 1)',
-                    'rgba(245, 158, 11, 1)'
+                    colors.blue,
+                    colors.green,
+                    colors.red,
+                    colors.orange
                 ],
                 borderWidth: 1
             }]
@@ -428,19 +523,19 @@ function createTypeChart(policies) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        color: '#9ca3af',
+                        color: colors.textColor,
                         font: {
                             family: 'JetBrains Mono'
                         },
                         stepSize: 1
                     },
                     grid: {
-                        color: 'rgba(107, 114, 128, 0.1)'
+                        color: colors.gridColor
                     }
                 },
                 x: {
                     ticks: {
-                        color: '#9ca3af',
+                        color: colors.textColor,
                         font: {
                             family: 'JetBrains Mono',
                             size: 10
@@ -456,10 +551,10 @@ function createTypeChart(policies) {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: '#111827',
-                    titleColor: '#10b981',
-                    bodyColor: '#f3f4f6',
-                    borderColor: '#374151',
+                    backgroundColor: colors.tooltipBg,
+                    titleColor: colors.green,
+                    bodyColor: colors.textColor,
+                    borderColor: colors.tooltipBorder,
                     borderWidth: 1,
                     titleFont: {
                         family: 'JetBrains Mono'
@@ -1166,6 +1261,9 @@ function displayAlerts(alerts) {
 
 // Query Functions
 function showQueryBuilder() {
+    // Close mobile menu if open
+    closeMobileMenu();
+
     // Hide dashboard
     document.getElementById('dashboardSection').style.display = 'none';
 
