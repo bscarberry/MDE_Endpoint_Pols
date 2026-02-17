@@ -6,7 +6,7 @@
     <title>{% block title %}Defender XDR Endpoint Policy Manager{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3IZ80rvpDYGFnkFk1LBEdzfQv/E8kcHK1YY" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-K2ByMIZOHbMpPiFaQIkxI7Rx6dNLpidJJLihC/sFMn1kW8dSQvMYpWeABHCMiHYG" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -139,6 +139,13 @@
     <!-- Loading Spinner -->
     <div id="loadingSpinner" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification" style="display: none;">
+        <i class="fas fa-exclamation-circle toast-icon"></i>
+        <span id="toastMessage"></span>
+        <button class="toast-close" onclick="hideToast()">&times;</button>
     </div>
 
     <script>

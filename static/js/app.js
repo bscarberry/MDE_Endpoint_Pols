@@ -88,7 +88,25 @@ function hideLoading() {
 }
 
 function showError(message) {
-    alert('Error: ' + message);
+    const toast = document.getElementById('toastNotification');
+    const toastMsg = document.getElementById('toastMessage');
+    if (toast && toastMsg) {
+        toastMsg.textContent = message;
+        toast.style.display = 'flex';
+        // Auto-hide after 8 seconds
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(hideToast, 8000);
+    } else {
+        // Fallback if toast element not found
+        console.error('Error:', message);
+    }
+}
+
+function hideToast() {
+    const toast = document.getElementById('toastNotification');
+    if (toast) {
+        toast.style.display = 'none';
+    }
 }
 
 function showModal(content) {
