@@ -214,8 +214,8 @@ async function loadDashboard() {
 
         // Update stats
         if (data.counts) {
-            document.getElementById('compliancePolicyCount').textContent = data.counts.compliance_policies || 0;
-            document.getElementById('configPolicyCount').textContent = data.counts.configuration_policies || 0;
+            document.getElementById('compliancePolicyCount').textContent = 0;
+            document.getElementById('configPolicyCount').textContent = 0;
             document.getElementById('securityPolicyCount').textContent = data.counts.endpoint_security_intents || 0;
         } else {
             console.error('No counts data in response');
@@ -635,38 +635,11 @@ function displayAllPolicies(policies) {
     const policyMap = new Map();
 
     // Collect all policies, deduplicating by ID (keep first occurrence)
-    if (policies.compliance_policies) {
-        console.log('Compliance policies:', policies.compliance_policies.length);
-        policies.compliance_policies.forEach(p => {
-            if (!policyMap.has(p.id)) {
-                policyMap.set(p.id, {...p, sourceType: 'Compliance Policy'});
-            }
-        });
-    }
-
-    if (policies.configuration_policies) {
-        console.log('Configuration policies:', policies.configuration_policies.length);
-        policies.configuration_policies.forEach(p => {
-            if (!policyMap.has(p.id)) {
-                policyMap.set(p.id, {...p, sourceType: 'Configuration Policy'});
-            }
-        });
-    }
-
     if (policies.endpoint_security_intents) {
         console.log('Endpoint security intents:', policies.endpoint_security_intents.length);
         policies.endpoint_security_intents.forEach(p => {
             if (!policyMap.has(p.id)) {
                 policyMap.set(p.id, {...p, sourceType: 'Endpoint Security'});
-            }
-        });
-    }
-
-    if (policies.configuration_profiles) {
-        console.log('Configuration profiles:', policies.configuration_profiles.length);
-        policies.configuration_profiles.forEach(p => {
-            if (!policyMap.has(p.id)) {
-                policyMap.set(p.id, {...p, sourceType: 'Settings Catalog'});
             }
         });
     }
@@ -776,7 +749,7 @@ function displayAllPolicies(policies) {
             const sourceType = policy.sourceType || 'Unknown';
             const platform = getPolicyPlatform(policy);
             const assignmentCount = policy.assignmentCount !== undefined ? policy.assignmentCount : 0;
-            const assignmentText = assignmentCount + ' group(s)';
+            const assignmentText = policy.assignmentSummary || (assignmentCount > 0 ? 'Group' : 'None');
             const assignmentGroups = policy.assignmentGroups || [];
             const groupNamesStr = assignmentGroups.join('|').toLowerCase();
 
@@ -1004,23 +977,37 @@ async function viewPolicyDetails(policyType, policyId) {
                 </table>
         `;
 
-        // Assignments
-        if (policy.assignments && policy.assignments.length > 0) {
-            html += '<h3 style="margin-top: 24px;">Assignments</h3>';
-            html += '<table class="data-table"><tr><th>Group Name</th><th>Target Type</th></tr>';
-            policy.assignments.forEach(assignment => {
-                const groupName = assignment.groupName || assignment.target?.groupId || 'All Devices';
-                const targetType = assignment.target?.['@odata.type'] || 'N/A';
-                html += `<tr><td>${escapeHtml(groupName)}</td><td>${escapeHtml(targetType)}</td></tr>`;
+        // Assignment summary and targets
+        html += '<h3 style="margin-top: 24px;">Assignments</h3>';
+        html += `<p><strong>Summary:</strong> ${escapeHtml(policy.assignmentSummary || 'None')}</p>`;
+        if (policy.assignmentTargets && policy.assignmentTargets.length > 0) {
+            html += '<table class="data-table"><tr><th>Target</th><th>Details</th></tr>';
+            policy.assignmentTargets.forEach(target => {
+                if (target.type === 'group') {
+                    html += `<tr><td>Group</td><td>${escapeHtml(target.groupName || target.groupId || 'Unknown Group')}</td></tr>`;
+                } else if (target.type === 'allDevices') {
+                    html += '<tr><td>All Devices</td><td>Tenant-wide device assignment</td></tr>';
+                } else if (target.type === 'allUsers') {
+                    html += '<tr><td>All Users</td><td>Tenant-wide user assignment</td></tr>';
+                }
             });
             html += '</table>';
         }
 
-        // Settings (simplified JSON view)
+        // Settings in UX-friendly sections
         html += '<h3 style="margin-top: 24px;">Settings</h3>';
-        html += '<pre style="background: var(--darker-bg); padding: 16px; border-radius: 8px; overflow-x: auto; max-height: 300px;">';
-        html += escapeHtml(JSON.stringify(policy, null, 2));
-        html += '</pre>';
+        if (policy.settingsSections && policy.settingsSections.length > 0) {
+            policy.settingsSections.forEach(section => {
+                html += `<h4>${escapeHtml(section.title || 'Settings')}</h4>`;
+                html += '<table class="data-table"><tr><th>Setting</th><th>Value</th></tr>';
+                (section.rows || []).forEach(row => {
+                    html += `<tr><td>${escapeHtml(row.name || 'Setting')}</td><td>${escapeHtml(row.value || '')}</td></tr>`;
+                });
+                html += '</table>';
+            });
+        } else {
+            html += '<p class="text-muted">No settings available.</p>';
+        }
 
         html += '</div>';
 
