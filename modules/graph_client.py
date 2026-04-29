@@ -236,6 +236,26 @@ class GraphClient:
         """
         all_policies = []
 
+        def is_endpoint_security_policy(policy):
+            name = (policy.get('displayName') or policy.get('name') or '').lower()
+            template_ref = policy.get('templateReference', {}) or {}
+            template_family = (template_ref.get('templateFamily') or '').lower()
+            template_name = (template_ref.get('templateDisplayName') or '').lower()
+            template_id = (policy.get('templateId') or '').lower()
+            policy_type = (policy.get('@odata.type') or '').lower()
+            endpoint_keywords = [
+                'endpoint security', 'antivirus', 'firewall', 'disk encryption',
+                'attack surface reduction', 'asr', 'edr', 'defender',
+                'account protection', 'app control', 'application control', 'wdac'
+            ]
+            return (
+                'endpointprotection' in policy_type or
+                any(k in name for k in endpoint_keywords) or
+                any(k in template_family for k in endpoint_keywords) or
+                any(k in template_name for k in endpoint_keywords) or
+                any(k in template_id for k in endpoint_keywords)
+            )
+
         # Method 1: Get from deviceConfigurations (PRIMARY SOURCE - Graph REST 1.0)
         # This is where windows10EndpointProtectionConfiguration objects live
         try:
@@ -301,14 +321,16 @@ class GraphClient:
             # Add all configuration policies (Settings Catalog)
             for policy in config_policies:
                 policy['policySource'] = 'configurationPolicies'
-                all_policies.append(policy)
-                logger.debug("Found Settings Catalog policy: %s", policy.get('name', 'Unknown'))
+                if is_endpoint_security_policy(policy):
+                    all_policies.append(policy)
+                    logger.debug("Found Endpoint Security Settings Catalog policy: %s", policy.get('name', 'Unknown'))
 
             logger.debug("Retrieved %d policies from configurationPolicies", len(config_policies))
 
         except Exception as e:
             logger.warning("Configuration policies (beta) failed: %s", str(e))
 
+        all_policies = [p for p in all_policies if is_endpoint_security_policy(p)]
         logger.info("Retrieved %d endpoint security policies from all sources", len(all_policies))
 
         return all_policies
