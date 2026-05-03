@@ -27,16 +27,28 @@ class PolicyManager:
         """
         try:
             policies = self.graph_client.get_all_policies_summary()
+            endpoint_policies = policies.get('endpoint_security_intents', [])
+
+            # Ensure endpoint-security-only scope and normalize assignment summary
+            normalized = []
+            for policy in endpoint_policies:
+                assignment_targets = self._normalize_assignment_targets(policy.get('assignments', []), policy.get('assignmentGroups', []))
+                policy['assignmentTargets'] = assignment_targets
+                policy['assignmentSummary'] = self._summarize_assignment_targets(assignment_targets)
+                normalized.append(policy)
+
             return {
                 'success': True,
-                'data': policies,
+                'data': {
+                    'endpoint_security_intents': normalized
+                },
                 'counts': {
-                    'compliance_policies': len(policies.get('compliance_policies', [])),
-                    'configuration_policies': len(policies.get('configuration_policies', [])),
-                    'endpoint_security_intents': len(policies.get('endpoint_security_intents', [])),
-                    'configuration_profiles': len(policies.get('configuration_profiles', [])),
-                    'device_scripts': len(policies.get('device_scripts', [])),
-                    'health_scripts': len(policies.get('health_scripts', [])),
+                    'compliance_policies': 0,
+                    'configuration_policies': 0,
+                    'endpoint_security_intents': len(normalized),
+                    'configuration_profiles': 0,
+                    'device_scripts': 0,
+                    'health_scripts': 0,
                 }
             }
         except Exception as e:
@@ -80,6 +92,11 @@ class PolicyManager:
                         except:
                             assignment['groupName'] = 'Unknown Group'
 
+            assignment_targets = self._normalize_assignment_targets(data.get('assignments', []), [])
+            data['assignmentTargets'] = assignment_targets
+            data['assignmentSummary'] = self._summarize_assignment_targets(assignment_targets)
+            data['settingsSections'] = self._normalize_settings_sections(data)
+
             return {
                 'success': True,
                 'data': data
@@ -89,6 +106,91 @@ class PolicyManager:
                 'success': False,
                 'error': str(e)
             }
+
+    def _normalize_assignment_targets(self, assignments, assignment_groups):
+        targets = []
+        for assignment in assignments or []:
+            target = assignment.get('target', {})
+            odata_type = (target.get('@odata.type') or '').lower()
+            group_id = target.get('groupId')
+            if group_id:
+                targets.append({
+                    'type': 'group',
+                    'groupId': group_id,
+                    'groupName': assignment.get('groupName', group_id)
+                })
+            elif 'alldevicesassignmenttarget' in odata_type:
+                targets.append({'type': 'allDevices'})
+            elif 'alllicensedusersassignmenttarget' in odata_type:
+                targets.append({'type': 'allUsers'})
+
+        # Fallback for list endpoint where we only have names
+        for name in assignment_groups or []:
+            if name == 'All Devices' and not any(t.get('type') == 'allDevices' for t in targets):
+                targets.append({'type': 'allDevices'})
+            elif name == 'All Users' and not any(t.get('type') == 'allUsers' for t in targets):
+                targets.append({'type': 'allUsers'})
+            elif name not in ['All Devices', 'All Users']:
+                targets.append({'type': 'group', 'groupName': name})
+
+        return targets
+
+    def _summarize_assignment_targets(self, targets):
+        if not targets:
+            return 'None'
+        has_group = any(t.get('type') == 'group' for t in targets)
+        has_all_devices = any(t.get('type') == 'allDevices' for t in targets)
+        has_all_users = any(t.get('type') == 'allUsers' for t in targets)
+        parts = []
+        if has_group:
+            parts.append('Group')
+        if has_all_devices:
+            parts.append('All Devices')
+        if has_all_users:
+            parts.append('All Users')
+        return ' + '.join(parts) if parts else 'None'
+
+    def _normalize_settings_sections(self, policy):
+        sections = []
+        # intents style
+        for category in policy.get('settingsByCategory', []):
+            rows = []
+            for setting in category.get('settings', []):
+                definition = setting.get('definition') or setting.get('settingDefinition') or {}
+                value = setting.get('value') or setting.get('simpleSettingValue') or setting.get('choiceSettingValue')
+                rows.append({
+                    'name': definition.get('displayName') or setting.get('displayName') or setting.get('id', 'Setting'),
+                    'value': str(value) if value is not None else 'Configured'
+                })
+            if rows:
+                sections.append({
+                    'title': category.get('categoryName') or category.get('displayName') or 'Settings',
+                    'rows': rows
+                })
+
+        # configurationPolicies style
+        if not sections and policy.get('settings'):
+            rows = []
+            for setting in policy.get('settings', []):
+                instance = setting.get('settingInstance', {})
+                definition = instance.get('settingDefinitionId') or setting.get('id') or 'Setting'
+                value = instance.get('choiceSettingValue') or instance.get('simpleSettingValue') or instance.get('value')
+                rows.append({'name': str(definition), 'value': str(value) if value is not None else 'Configured'})
+            if rows:
+                sections.append({'title': 'Policy Settings', 'rows': rows})
+
+        # deviceConfigurations fallback
+        if not sections:
+            rows = []
+            for key, value in policy.items():
+                if key in ['id', 'displayName', 'name', 'description', 'assignments', 'assignmentGroups', 'assignmentCount']:
+                    continue
+                if isinstance(value, (str, int, float, bool)):
+                    rows.append({'name': key, 'value': str(value)})
+            if rows:
+                sections.append({'title': 'Configuration Values', 'rows': rows[:200]})
+
+        return sections
 
     def search_policies(self, search_term):
         """
